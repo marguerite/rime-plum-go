@@ -62,66 +62,82 @@ func genPredefinedRecipes(r string, recipes []string) []string {
 	return recipes
 }
 
-// RecipeURL an object contains everything github clone needs
-type RecipeURL struct {
-	Prefix string
-	Author string
-	Repo   string
-	Branch string
+// Recipe an object contains everything github clone needs
+type Recipe struct {
+	Prefix  string
+	User    string
+	Repo    string
+	Branch  string
+	Dir     string
+	Action  string
+	Options string
 }
 
-// String print the RecipeURL as string
-func (r RecipeURL) String() string {
-	return r.Prefix + r.Author + "/" + r.Repo
+// URL print the Recipe's URL
+func (r Recipe) URL() string {
+	repo := r.Repo
+	if r.Prefix == "https://github.com/" && r.User == "rime" && !strings.HasPrefix(r.Repo, "rime-") {
+		repo = "rime-" + repo
+	}
+	return r.Prefix + r.User + "/" + repo
 }
 
-// RecipeURLs a slice of RecipeURL
-type RecipeURLs []RecipeURL
+func (r *Recipe) SetDir(d string) {
+	r.Dir = d
+}
 
-// NewRecipeURL generate a new RecipeURL object
-func NewRecipeURL(prefix, author, repo, branch string) RecipeURL {
+// Recipes a slice of *Recipe
+type Recipes []*Recipe
+
+// NewRecipe generate a new Recipe object
+func NewRecipe(prefix, user, repo, branch, action, options string) Recipe {
 	if len(prefix) == 0 {
 		prefix = "https://github.com/"
 	}
-	if len(author) == 0 {
-		author = "rime"
+	if len(user) == 0 {
+		user = "rime"
 	}
 	if len(branch) == 0 {
 		branch = "master"
 	}
-	if prefix == "https://github.com" && author == "rime" && strings.HasPrefix(repo, "rime-") {
-		repo = "rime-" + repo
-	}
-	return RecipeURL{prefix, author, repo, branch}
+	return Recipe{prefix, user, repo, branch, "", action, options}
 }
 
-func parseRecipeUrl(recipes []string) RecipeURLs {
-	urls := RecipeURLs{}
+func parseRecipes(strs []string) Recipes {
+	recipes := Recipes{}
 	re := regexp.MustCompile(reURL + reRecipe)
-	for _, recipe := range recipes {
-		if !re.MatchString(recipe) {
-			fmt.Printf("can't parse recipe URL %s.\n", recipe)
+	for _, s := range strs {
+		if !re.MatchString(s) {
+			fmt.Printf("can't parse recipe URL %s.\n", s)
 			continue
 		}
-		m := re.FindStringSubmatch(recipe)
+		m := re.FindStringSubmatch(s)
 		prefix := m[1]
-		author := m[3]
+		user := m[3]
 		repo := m[4]
 		branch := m[6]
+		action := ""
+		options := ""
 		if len(prefix) == 0 {
 			prefix = "https://github.com/"
 		}
-		if len(author) == 0 {
-			author = "rime"
+		if len(user) == 0 {
+			user = "rime"
 		} else {
-			author = strings.Replace(author, "/", "", -1)
+			user = strings.Replace(user, "/", "", -1)
 		}
 		if len(branch) == 0 {
 			branch = "master"
 		}
-		urls = append(urls, NewRecipeURL(prefix, author, repo, branch))
+		if len(m[7]) != 0 {
+			action = m[8]
+			options = m[9]
+		}
+
+		r := NewRecipe(prefix, user, repo, branch, action, options)
+		recipes = append(recipes, &r)
 	}
-	return urls
+	return recipes
 }
 
 func remoteRecipeURL(conf string) (string, error) {
@@ -131,17 +147,17 @@ func remoteRecipeURL(conf string) (string, error) {
 	}
 	m := re.FindStringSubmatch(conf)
 	prefix := m[1]
-	author := m[3]
+	user := m[3]
 	repo := m[4]
 	path := m[5]
 	pkgconf := m[8]
 	if len(prefix) == 0 {
 		prefix = "https://github.com/"
 	}
-	if len(author) == 0 {
-		author = "rime"
+	if len(user) == 0 {
+		user = "rime"
 	} else {
-		author = strings.Replace(author, "/", "", -1)
+		user = strings.Replace(user, "/", "", -1)
 	}
 	if len(path) == 0 {
 		path = "/raw/master/"
@@ -149,7 +165,7 @@ func remoteRecipeURL(conf string) (string, error) {
 	if strings.HasPrefix(path, "@") {
 		path = "/raw/" + strings.Replace(path, "@", "", -1) + "/"
 	}
-	url := prefix + author + "/" + repo + path + pkgconf
+	url := prefix + user + "/" + repo + path + pkgconf
 	return url, nil
 }
 
@@ -194,7 +210,7 @@ func getEnv(env string) (string, error) {
 	return val, nil
 }
 
-func parseRecipes(args []string) []string {
+func parseRecipeStrs(args []string) []string {
 	recipes := []string{}
 	for _, recipe := range args {
 		// predefined recipes
@@ -225,23 +241,72 @@ func getDir(dir string) string {
 	return ""
 }
 
-func cloneOrUpdateRepos(urls RecipeURLs) {
-	rimeDir := getDir("RIME_DIR")
+func cloneOrUpdateRepos(urls Recipes, rimeDir string) {
+	if len(rimeDir) == 0 {
+		rimeDir = getDir("RIME_DIR")
+	}
 	for _, v := range urls {
-		_, err := git.PlainClone(filepath.Join(rimeDir, v.Repo), false, &git.CloneOptions{
-			URL:           v.String(),
-			ReferenceName: plumbing.NewBranchReferenceName(v.Branch),
-			SingleBranch:  true})
-		fmt.Println(err)
+		pkgDir, _ := filepath.Abs(rimeDir + "/package/" + v.User + "/" + strings.Replace(v.Repo, "rime-", "", -1))
+		v.SetDir(pkgDir)
+		if _, err := os.Stat(pkgDir); os.IsNotExist(err) {
+			fmt.Printf("Cloneing %s to %s.\n", v.Repo, pkgDir)
+			_, err := git.PlainClone(pkgDir, false, &git.CloneOptions{
+				URL:           v.URL(),
+				ReferenceName: plumbing.NewBranchReferenceName(v.Branch),
+				SingleBranch:  true})
+			fmt.Println(err)
+		} else {
+			fmt.Printf("Updating %s.\n", pkgDir)
+			r, err := git.PlainOpen(pkgDir)
+			if err != nil {
+				// not git working dir
+			}
+			w, err := r.Worktree()
+			if err != nil {
+			}
+			err = w.Pull(&git.PullOptions{RemoteName: "origin"})
+			if err != nil {
+				if err.Error() == "already up-to-date" {
+					fmt.Printf("%s already up-to-date.\n", v.URL())
+					continue
+				}
+				fmt.Printf("Failed to pull repository %s: %s.\n", v.URL(), err.Error())
+				os.Exit(1)
+			}
+		}
 	}
 }
 
+func installPackages(recipes Recipes) {
+	for _, recipe := range recipes {
+		if len(recipe.Options) != 0 {
+			installRecipe(filepath.Join(recipe.Dir, recipe.Repo+".recipe.yaml"))
+			continue
+		}
+		if _, err := os.Stat(filepath.Join(recipe.Dir, "recipe.yaml")); !os.IsNotExist(err) {
+			installRecipe(filepath.Join(recipe.Dir, "recipe.yaml"))
+			continue
+		}
+		installFiles(recipe.Dir)
+	}
+}
+
+func installRecipe(recipe string) {
+	fmt.Println(recipe)
+}
+
+func installFiles(recipe string) {
+	fmt.Println("fuck")
+}
+
 func main() {
-	var recipeStr string
+	var recipeStr, rimeDir string
 	flag.StringVar(&recipeStr, "r", "", "pass recipe url and commands.")
+	flag.StringVar(&rimeDir, "d", "", "where to install recipes.")
 	flag.Parse()
 
-	recipes := parseRecipes(strings.Split(recipeStr, " "))
-	urls := parseRecipeUrl(recipes)
-	cloneOrUpdateRepos(urls)
+	recipeStrs := parseRecipeStrs(strings.Split(recipeStr, " "))
+	recipes := parseRecipes(recipeStrs)
+	cloneOrUpdateRepos(recipes, rimeDir)
+	installPackages(recipes)
 }
