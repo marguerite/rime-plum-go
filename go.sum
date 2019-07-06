@@ -29,8 +29,8 @@ github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORN
 github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
 github.com/kr/text v0.1.0 h1:45sCR5RtlFHMR4UwH9sdQ5TC8v0qDQCHnXt+kaKSTVE=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
-github.com/marguerite/util v0.0.0-20190630043715-49d579a866cf h1:ubOR44N9f96z9Uxxcog/8RLuhaaD41EdnXbGBQ60PAI=
-github.com/marguerite/util v0.0.0-20190630043715-49d579a866cf/go.mod h1:O9sK+ae5egCLsW7GODcULahgSNJ5P3XNSPgccfyr87E=
+github.com/marguerite/util v0.0.0-20190706135243-5919349f9870 h1:uzqwOeHns4Iz+PmoPFYxlGsYJdeUN5Fg8ImrasVwKHQ=
+github.com/marguerite/util v0.0.0-20190706135243-5919349f9870/go.mod h1:O9sK+ae5egCLsW7GODcULahgSNJ5P3XNSPgccfyr87E=
 github.com/mitchellh/go-homedir v1.1.0 h1:lukF9ziXFxDFPkA1vsr5zpc1XuPDn/wFntq5mG+4E0Y=
 github.com/mitchellh/go-homedir v1.1.0/go.mod h1:SfyaCUpYCn1Vlf4IUYiD9fPX4A5wJrkLzIz1N1q0pr0=
 github.com/pelletier/go-buffruneio v0.2.0 h1:U4t4R6YkofJ5xHm3dJzuRpPZ0mr5MMCoAWooScCR7aA=
@@ -52,8 +52,8 @@ golang.org/x/crypto v0.0.0-20190219172222-a4c6cb3142f2/go.mod h1:6SG95UA2DQfeDnf
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/crypto v0.0.0-20190422183909-d864b10871cd h1:sMHc2rZHuzQmrbVoSpt9HgerkXPyIeCSO6k0zUMGfFk=
 golang.org/x/crypto v0.0.0-20190422183909-d864b10871cd/go.mod h1:yigFU9vqHzYiE8UmvKecakEJjdnWj3jj499lnFckfCI=
-golang.org/x/crypto v0.0.0-20190621222207-cc06ce4a13d4 h1:ydJNl0ENAG67pFbB+9tfhiL2pYqLhfoaZFw/cjLhY4A=
-golang.org/x/crypto v0.0.0-20190621222207-cc06ce4a13d4/go.mod h1:yigFU9vqHzYiE8UmvKecakEJjdnWj3jj499lnFckfCI=
+golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4 h1:HuIa8hRrWRSrqYzx1qI49NNxhdi2PrY7gxVSq1JjLDc=
+golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4/go.mod h1:yigFU9vqHzYiE8UmvKecakEJjdnWj3jj499lnFckfCI=
 golang.org/x/net v0.0.0-20190404232315-eb5bcb51f2a3/go.mod h1:t9HGtf8HONx5eT2rtn7q6eTqICYqUVnKs3thJo3Qplg=
 golang.org/x/net v0.0.0-20190502183928-7f726cade0ab h1:9RfW3ktsOZxgo9YNbBAjq1FWzc/igwEcUzZz8IXgSbk=
 golang.org/x/net v0.0.0-20190502183928-7f726cade0ab/go.mod h1:t9HGtf8HONx5eT2rtn7q6eTqICYqUVnKs3thJo3Qplg=
@@ -74,6 +74,8 @@ gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 h1:qIbj1fsPNlZgppZ+VLlY7N33
 gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/src-d/go-billy.v4 v4.3.0 h1:KtlZ4c1OWbIs4jCv5ZXrTqG8EQocr0g/d4DjNg70aek=
 gopkg.in/src-d/go-billy.v4 v4.3.0/go.mod h1:tm33zBoOwxjYHZIE+OV8bxTWFMJLrconzFMd38aARFk=
+gopkg.in/src-d/go-billy.v4 v4.3.1 h1:OkK1DmefDy1Z6Veu82wdNj/cLpYORhdX4qdaYCPwc7s=
+gopkg.in/src-d/go-billy.v4 v4.3.1/go.mod h1:tm33zBoOwxjYHZIE+OV8bxTWFMJLrconzFMd38aARFk=
 gopkg.in/src-d/go-git-fixtures.v3 v3.5.0 h1:ivZFOIltbce2Mo8IjzUHAFoq/IylO9WHhNOAJK+LsJg=
 gopkg.in/src-d/go-git-fixtures.v3 v3.5.0/go.mod h1:dLBcvytrw/TYZsNTWCnkNF2DSIlzWYqTe3rJR56Ac7g=
 gopkg.in/src-d/go-git.v4 v4.12.0 h1:CKgvBCJCcdfNnyXPYI4Cp8PaDDAmAPEN0CtfEdEAbd8=

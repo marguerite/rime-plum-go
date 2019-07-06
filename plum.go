@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/marguerite/util/dirutils"
 	"github.com/marguerite/util/slice"
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
@@ -287,7 +288,7 @@ func installPackages(recipes Recipes) {
 			installRecipe(filepath.Join(recipe.Dir, "recipe.yaml"))
 			continue
 		}
-		installFiles(recipe.Dir)
+		installFilesFromDir(recipe.Dir)
 	}
 }
 
@@ -295,8 +296,12 @@ func installRecipe(recipe string) {
 	fmt.Println(recipe)
 }
 
-func installFiles(recipe string) {
-	fmt.Println("fuck")
+func installFilesFromDir(dir string) {
+	pattern := []string{".*\\.yaml", ".*\\.txt", ".*\\.gram", "opencc\\/.*\\..*"}
+	ex := []string{"(custom|recipe)\\.yaml", "opencc\\/", "", "\\.(json|ocd|txt)"}
+	files, err := dirutils.Glob(dir, pattern, ex)
+	fmt.Println(files)
+	fmt.Println(err)
 }
 
 func main() {
