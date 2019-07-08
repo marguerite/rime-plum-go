@@ -20,7 +20,7 @@ import (
 var (
 	reURL    string = "(http(s)?:\\/\\/[^\\/]+\\/)?([^\\/]+\\/)?([^\\/@:]+)"
 	reConf   string = "(@([\\w]+)|\\/.*?\\/([^\\/]+))?\\/(.*?-packages.conf)"
-	reRecipe string = "(@([^:]+))?(:(\\w+):(.*))?"
+	reRecipe string = "(@([^:]+))?(:(\\w+))?(:(.*))?"
 )
 
 func presetRecipes() []string {
@@ -70,7 +70,7 @@ type Recipe struct {
 	Repo    string
 	Branch  string
 	Dir     string
-	Action  string
+	Name    string
 	Options string
 }
 
@@ -91,7 +91,7 @@ func (r *Recipe) SetDir(d string) {
 type Recipes []*Recipe
 
 // NewRecipe generate a new Recipe object
-func NewRecipe(prefix, user, repo, branch, action, options string) Recipe {
+func NewRecipe(prefix, user, repo, branch, name, options string) Recipe {
 	if len(prefix) == 0 {
 		prefix = "https://github.com/"
 	}
@@ -101,7 +101,7 @@ func NewRecipe(prefix, user, repo, branch, action, options string) Recipe {
 	if len(branch) == 0 {
 		branch = "master"
 	}
-	return Recipe{prefix, user, repo, branch, "", action, options}
+	return Recipe{prefix, user, repo, branch, "", name, options}
 }
 
 func parseRecipes(strs []string) Recipes {
@@ -117,8 +117,8 @@ func parseRecipes(strs []string) Recipes {
 		user := m[3]
 		repo := m[4]
 		branch := m[6]
-		action := ""
-		options := ""
+		name := m[8]
+		options := m[10]
 		if len(prefix) == 0 {
 			prefix = "https://github.com/"
 		}
@@ -130,12 +130,8 @@ func parseRecipes(strs []string) Recipes {
 		if len(branch) == 0 {
 			branch = "master"
 		}
-		if len(m[7]) != 0 {
-			action = m[8]
-			options = m[9]
-		}
 
-		r := NewRecipe(prefix, user, repo, branch, action, options)
+		r := NewRecipe(prefix, user, repo, branch, name, options)
 		recipes = append(recipes, &r)
 	}
 	return recipes
@@ -278,22 +274,73 @@ func cloneOrUpdateRepos(urls Recipes, rimeDir string) {
 	}
 }
 
+// RecipeConf contains useful information in the recipe file
+type RecipeConf struct {
+	Rx    string
+	Args  []string
+	Files []string
+	Patch string
+}
+
+func parseRecipeConf(recipeFile string, recipe Recipe) RecipeConf {
+	if _, err := os.Stat(recipeFile); os.IsNotExist(err) {
+		fmt.Printf("Recipe not found %s\n", recipeFile)
+		os.Exit(1)
+	}
+	f, err := ioutil.ReadFile(recipeFile)
+	if err != nil {
+		fmt.Printf("Can not read %s: %s\n", recipeFile, err.Error())
+		os.Exit(1)
+	}
+	re := regexp.MustCompile(`(?s)Rx:\s+(\w+).*?args:(.*?)description.*?install_files:.*?\n(.*)\n\npatch_files:\n(.*)`)
+	if !re.MatchString(string(f)) {
+		fmt.Printf("Recipe file's format is wrong: %s\n", recipeFile)
+		os.Exit(1)
+	}
+	m := re.FindStringSubmatch(string(f))
+	if m[1] != recipe.Name {
+		fmt.Printf("Invalid Recipe %s doesn't match file name %s\n", m[1], recipe.Name)
+		os.Exit(1)
+	}
+	return RecipeConf{m[1], strings.Split(strings.TrimSpace(m[2]), "\n"), strings.Split(strings.TrimSpace(m[3]), "\n"), strings.TrimSpace(m[4])}
+}
+
+func applyInstallFiles(files []string) {
+	for _, f := range files {
+		f = strings.TrimSpace(f)
+		if strings.HasPrefix(f, "#") {
+			continue
+		}
+		f = strings.TrimLeft(f, "- ")
+		fmt.Println(f)
+	}
+}
+
+func parsePatch(content string, args []string) string {
+
+}
+
 func installPackages(recipes Recipes) {
 	for _, recipe := range recipes {
-		if len(recipe.Options) != 0 {
-			installRecipe(filepath.Join(recipe.Dir, recipe.Repo+".recipe.yaml"))
+		if len(recipe.Name) != 0 {
+			installRecipe(filepath.Join(recipe.Dir, recipe.Name+".recipe.yaml"), *recipe)
 			continue
 		}
 		if _, err := os.Stat(filepath.Join(recipe.Dir, "recipe.yaml")); !os.IsNotExist(err) {
-			installRecipe(filepath.Join(recipe.Dir, "recipe.yaml"))
+			installRecipe(filepath.Join(recipe.Dir, "recipe.yaml"), *recipe)
 			continue
 		}
 		installFilesFromDir(recipe.Dir)
 	}
 }
 
-func installRecipe(recipe string) {
-	fmt.Println(recipe)
+func installRecipe(recipeFile string, recipe Recipe) {
+	rx := recipe.Repo + "/" + recipe.Name
+	fmt.Printf("Installing recipe: %s\n", rx)
+	fmt.Printf("\t- option: %s\n", recipe.Options)
+	r := parseRecipeConf(recipeFile, recipe)
+	applyInstallFiles(r.Files)
+	patchContent = parsePatch(r.Patch, r.Args)
 }
 
 func installFilesFromDir(dir string) {
