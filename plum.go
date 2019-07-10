@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 )
 
@@ -236,13 +237,43 @@ func getDir(dir string) string {
 		return d
 	}
 	// guess based on operating system
+	if runtime.GOOS == "windows" {
+		d, _ := getEnv("APPDATA")
+		return filepath.Join(d, "Rime")
+	}
+	if runtime.GOOS == "darwin" {
+		d, _ := getEnv("HOME")
+		return filepath.Join(d, "Library/Rime")
+	}
+	return getRimeDirLinux()
+}
+
+func getRimeDirLinux() string {
+	im, err := getEnv("GTK_IM_MODULE")
+	if err != nil {
+		// detect by binary
+	}
+	// system root ? /usr/share/rime-data
+	home, _ := getEnv("HOME")
+	im = strings.Replace(im, "@im=", "", 1)
+	switch im {
+	case "fcitx":
+		fmt.Println("Installing for Rime Frontend: fcitx-rime")
+		return filepath.Join(home, ".config/fcitx/rime")
+	case "fcitx5":
+		fmt.Println("Installing for Rime Frontend: fcitx5-rime")
+		return filepath.Join(home, ".config/fcitx5/rime")
+	case "ibus":
+		fmt.Println("Installing for Rime Frontend: ibus-rime")
+		return filepath.Join(home, ".config/ibus/rime")
+	default:
+		fmt.Printf("Unkown Rime Frontend: %s\n", im)
+		os.Exit(1)
+	}
 	return ""
 }
 
 func cloneOrUpdateRepos(urls Recipes, rimeDir string) {
-	if len(rimeDir) == 0 {
-		rimeDir = getDir("RIME_DIR")
-	}
 	for _, v := range urls {
 		pkgDir, _ := filepath.Abs(rimeDir + "/package/" + v.User + "/" + strings.Replace(v.Repo, "rime-", "", -1))
 		v.SetDir(pkgDir)
@@ -255,6 +286,7 @@ func cloneOrUpdateRepos(urls Recipes, rimeDir string) {
 			fmt.Println(err)
 		} else {
 			fmt.Printf("Updating %s.\n", pkgDir)
+			// Switch branch?
 			r, err := git.PlainOpen(pkgDir)
 			if err != nil {
 				// not git working dir
@@ -305,7 +337,7 @@ func parseRecipeConf(recipeFile string, recipe Recipe) RecipeConf {
 	}
 	files := []string{}
 	if len(m[3]) > 0 {
-		files = strings.Split(strings.TrimSpace(m[3]), "\n")
+		files = strings.Split(strings.TrimSpace(m[4]), "\n")
 	}
 	return RecipeConf{m[1], parseRecipeArgs(m[2], recipe.Options), files, strings.TrimSpace(m[5])}
 }
@@ -348,7 +380,6 @@ func applyInstallFiles(files []string, src, dst string) {
 			continue
 		}
 		f = strings.TrimLeft(f, "- ")
-		fmt.Println(filepath.Join(src, f))
 		fileutils.Copy(filepath.Join(src, f), dst)
 	}
 }
@@ -460,6 +491,10 @@ func main() {
 	flag.StringVar(&recipeStr, "r", "", "pass recipe url and commands.")
 	flag.StringVar(&rimeDir, "d", "", "where to install recipes.")
 	flag.Parse()
+
+	if len(rimeDir) == 0 {
+		rimeDir = getDir("RIME_DIR")
+	}
 
 	recipeStrs := parseRecipeStrs(strings.Split(recipeStr, " "))
 	recipes := parseRecipes(recipeStrs)
