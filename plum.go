@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/marguerite/util/dirutils"
+	"github.com/marguerite/util/fileutils"
 	"github.com/marguerite/util/slice"
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
@@ -340,14 +341,15 @@ func parseRecipeArgs(argStr string, optStr string) map[string]string {
 	return args
 }
 
-func applyInstallFiles(files []string) {
+func applyInstallFiles(files []string, src, dst string) {
 	for _, f := range files {
 		f = strings.TrimSpace(f)
 		if strings.HasPrefix(f, "#") {
 			continue
 		}
 		f = strings.TrimLeft(f, "- ")
-		fmt.Println(f)
+		fmt.Println(filepath.Join(src, f))
+		fileutils.Copy(filepath.Join(src, f), dst)
 	}
 }
 
@@ -384,52 +386,73 @@ func replacePatchVariable(s string, m [][]string, args map[string]string) string
 }
 
 // replace args variable to string in patchContent
-func parsePatch(content string, args map[string]string) string {
+func parsePatch(content string, args map[string]string, recipe Recipe) (string, string) {
 	s := bufio.NewScanner(strings.NewReader(content))
-	patch := ""
+	patch := "# RX: " + recipe.Repo + ":" + recipe.Name + ":" + recipe.Options + " {\n"
+	file := ""
 	re := regexp.MustCompile(`\$\{(.*?)(([%#:-]+)(.*?))?\}`)
+	i := 0
+	sep := "\t"
 	for s.Scan() {
-		line := s.Text()
+		line := strings.TrimSpace(s.Text())
+		str := ""
 		if re.MatchString(line) {
 			m := re.FindAllStringSubmatch(line, -1)
-			patch += replacePatchVariable(line, m, args)
-			continue
+			str += replacePatchVariable(line, m, args)
+		} else {
+			str += line
 		}
-		patch += line
+		if i == 0 {
+			file += strings.Replace(str, ":", "", 1)
+		} else {
+			patch += sep + str + "\n"
+			sep = strings.Repeat(sep, 2)
+		}
+		i++
 	}
-	return patch
+	return patch + "# }\n", file
 }
 
-func installPackages(recipes Recipes) {
+func installPackages(recipes Recipes, dst string) {
 	for _, recipe := range recipes {
 		if len(recipe.Name) != 0 {
-			installRecipe(filepath.Join(recipe.Dir, recipe.Name+".recipe.yaml"), *recipe)
+			installRecipe(filepath.Join(recipe.Dir, recipe.Name+".recipe.yaml"), dst, *recipe)
 			continue
 		}
 		if _, err := os.Stat(filepath.Join(recipe.Dir, "recipe.yaml")); !os.IsNotExist(err) {
-			installRecipe(filepath.Join(recipe.Dir, "recipe.yaml"), *recipe)
+			installRecipe(filepath.Join(recipe.Dir, "recipe.yaml"), dst, *recipe)
 			continue
 		}
-		installFilesFromDir(recipe.Dir)
+		installFilesFromDir(recipe.Dir, dst)
 	}
 }
 
-func installRecipe(recipeFile string, recipe Recipe) {
+func installRecipe(recipeFile, dst string, recipe Recipe) {
 	rx := recipe.Repo + "/" + recipe.Name
 	fmt.Printf("Installing recipe: %s\n", rx)
 	fmt.Printf("\t- option: %s\n", recipe.Options)
 	r := parseRecipeConf(recipeFile, recipe)
-	applyInstallFiles(r.Files)
-	patchContent := parsePatch(r.Patch, r.Args)
-	// write patch
+	applyInstallFiles(r.Files, filepath.Dir(recipeFile), dst)
+	patchContent, patchFile := parsePatch(r.Patch, r.Args, recipe)
+	dst = filepath.Join(dst, patchFile)
+	if _, err := os.Stat(dst); os.IsNotExist(err) {
+		ioutil.WriteFile(dst, []byte("__patch:\n"+patchContent), 0644)
+	} else {
+		f, _ := ioutil.ReadFile(dst)
+		re := regexp.MustCompile("(?s)# RX:.*?{\n.*}\n")
+		if re.MatchString(string(f)) {
+			ioutil.WriteFile(dst, []byte(strings.Replace(string(f), re.FindStringSubmatch(string(f))[0], patchContent, 1)), 0644)
+		}
+	}
 }
 
-func installFilesFromDir(dir string) {
+func installFilesFromDir(dir, dst string) {
 	pattern := []string{".*\\.yaml", ".*\\.txt", ".*\\.gram", "opencc\\/.*\\..*"}
 	ex := []string{"(custom|recipe)\\.yaml", "opencc\\/", "", "\\.(json|ocd|txt)"}
-	files, err := dirutils.Glob(dir, pattern, ex)
-	fmt.Println(files)
-	fmt.Println(err)
+	files, _ := dirutils.Glob(dir, pattern, ex)
+	for _, v := range files {
+		fileutils.Copy(v, dst)
+	}
 }
 
 func main() {
@@ -441,5 +464,5 @@ func main() {
 	recipeStrs := parseRecipeStrs(strings.Split(recipeStr, " "))
 	recipes := parseRecipes(recipeStrs)
 	cloneOrUpdateRepos(recipes, rimeDir)
-	installPackages(recipes)
+	installPackages(recipes, rimeDir)
 }
