@@ -277,7 +277,7 @@ func cloneOrUpdateRepos(urls Recipes, rimeDir string) {
 // RecipeConf contains useful information in the recipe file
 type RecipeConf struct {
 	Rx    string
-	Args  []string
+	Args  map[string]string
 	Files []string
 	Patch string
 }
@@ -292,7 +292,7 @@ func parseRecipeConf(recipeFile string, recipe Recipe) RecipeConf {
 		fmt.Printf("Can not read %s: %s\n", recipeFile, err.Error())
 		os.Exit(1)
 	}
-	re := regexp.MustCompile(`(?s)Rx:\s+(\w+).*?args:(.*?)description.*?install_files:.*?\n(.*)\n\npatch_files:\n(.*)`)
+	re := regexp.MustCompile(`(?s)Rx:\s+(\w+).*?args:(.*?)description.*?(install_files:.*?\n(.*)\n\n)?patch_files:\n(.*)`)
 	if !re.MatchString(string(f)) {
 		fmt.Printf("Recipe file's format is wrong: %s\n", recipeFile)
 		os.Exit(1)
@@ -302,7 +302,42 @@ func parseRecipeConf(recipeFile string, recipe Recipe) RecipeConf {
 		fmt.Printf("Invalid Recipe %s doesn't match file name %s\n", m[1], recipe.Name)
 		os.Exit(1)
 	}
-	return RecipeConf{m[1], strings.Split(strings.TrimSpace(m[2]), "\n"), strings.Split(strings.TrimSpace(m[3]), "\n"), strings.TrimSpace(m[4])}
+	files := []string{}
+	if len(m[3]) > 0 {
+		files = strings.Split(strings.TrimSpace(m[3]), "\n")
+	}
+	return RecipeConf{m[1], parseRecipeArgs(m[2], recipe.Options), files, strings.TrimSpace(m[5])}
+}
+
+func parseRecipeArgs(argStr string, optStr string) map[string]string {
+	re := regexp.MustCompile(`(\w+)(=(.*))?`)
+	args := map[string]string{}
+	for _, v := range strings.Split(argStr, "-") {
+		v = strings.TrimSpace(v)
+		if len(v) > 0 && re.MatchString(v) {
+			m := re.FindStringSubmatch(v)
+			if len(m[2]) > 0 {
+				args[m[1]] = m[3]
+			} else {
+				args[m[1]] = ""
+			}
+		}
+	}
+	opts := map[string]string{}
+	for _, v := range strings.Split(optStr, ",") {
+		if re.MatchString(v) {
+			m := re.FindStringSubmatch(v)
+			opts[m[1]] = m[3]
+		}
+	}
+
+	for k := range args {
+		if val, ok := opts[k]; ok {
+			args[k] = val
+		}
+	}
+
+	return args
 }
 
 func applyInstallFiles(files []string) {
@@ -316,8 +351,53 @@ func applyInstallFiles(files []string) {
 	}
 }
 
-func parsePatch(content string, args []string) string {
+func replacePatchVariable(s string, m [][]string, args map[string]string) string {
+	for _, v := range m {
+		str := ""
+		var re *regexp.Regexp
+		switch v[3] {
+		case "%":
+			re = regexp.MustCompile("(.*?)" + strings.Replace(v[4], "\\", "\\\\", -1) + ".*?$")
+		case "%%":
+			re = regexp.MustCompile("(.*?)" + strings.Replace(v[4], "\\", "\\\\", -1) + ".*$")
+		case "#":
+			re = regexp.MustCompile("^.*?" + strings.Replace(v[4], "\\", "\\\\", -1) + "(.*?)")
+		case "##":
+			re = regexp.MustCompile("^.*" + strings.Replace(v[4], "\\", "\\\\", -1) + "(.*?)")
+		default:
+			re = regexp.MustCompile("")
+		}
 
+		if len(re.String()) > 0 && re.MatchString(args[v[1]]) {
+			str = re.FindStringSubmatch(args[v[1]])[1]
+		}
+		if v[3] == ":-" && len(args[v[1]]) == 0 {
+			str = v[4]
+		}
+		if len(str) > 0 {
+			s = strings.Replace(s, v[0], str, 1)
+		} else {
+			s = strings.Replace(s, v[0], args[v[1]], 1)
+		}
+	}
+	return s
+}
+
+// replace args variable to string in patchContent
+func parsePatch(content string, args map[string]string) string {
+	s := bufio.NewScanner(strings.NewReader(content))
+	patch := ""
+	re := regexp.MustCompile(`\$\{(.*?)(([%#:-]+)(.*?))?\}`)
+	for s.Scan() {
+		line := s.Text()
+		if re.MatchString(line) {
+			m := re.FindAllStringSubmatch(line, -1)
+			patch += replacePatchVariable(line, m, args)
+			continue
+		}
+		patch += line
+	}
+	return patch
 }
 
 func installPackages(recipes Recipes) {
@@ -340,7 +420,8 @@ func installRecipe(recipeFile string, recipe Recipe) {
 	fmt.Printf("\t- option: %s\n", recipe.Options)
 	r := parseRecipeConf(recipeFile, recipe)
 	applyInstallFiles(r.Files)
-	patchContent = parsePatch(r.Patch, r.Args)
+	patchContent := parsePatch(r.Patch, r.Args)
+	// write patch
 }
 
 func installFilesFromDir(dir string) {
