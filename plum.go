@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 )
 
@@ -542,10 +543,141 @@ func installFilesFromDir(dir, dst string) {
 	}
 }
 
+func buildPackages(dir string) {
+	files, _ := dirutils.Ls(dir)
+	if ok, _ := slice.Contains(files, "essay.txt"); ok {
+		minEssay(filepath.Join(dir, "essay.txt"))
+	}
+	if ok, _ := slice.Contains(files, "luna_pinyin.dict.yaml"); ok {
+		minLuna(filepath.Join(dir, "luna_pinyin.dict.yaml"))
+	}
+	schemas, _ := dirutils.Glob(dir, regexp.MustCompile(`.*\.schema.yaml$`))
+	for _, v := range schemas {
+		minSchema(v)
+	}
+	overrideDefaultYaml(schemas)
+	_, _, err := command.Run("/usr/bin/rime_deployer", "--build", dir)
+	if err != nil {
+		color.Error.Printf("Failed to run command: %s"+eof(), "/usr/bin/rime_deployer --build "+dir)
+	}
+	err = fileutils.Remove(filepath.Join(dir, "user.yaml"))
+	if err != nil {
+		color.Error.Printf("Failed to remove %s"+eof(), filepath.Join(dir, "user.yaml"))
+	}
+}
+
+func overrideDefaultYaml(schemas []string) {
+	m := []string{}
+	for _, v := range schemas {
+		s := strings.TrimRight(filepath.Base(v), ".schema.yaml")
+		m = append(m, "- schema: "+s)
+	}
+
+	d := filepath.Join(filepath.Dir(schemas[0]), "default.yaml")
+	f, _ := ioutil.ReadFile(d)
+	re := regexp.MustCompile(`^config_version:\s+\'(.*)\'$`)
+	scanner := bufio.NewScanner(strings.NewReader(string(f)))
+	list := ""
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(line, "- schema:") {
+			for _, i := range m {
+				if strings.Contains(line, i) {
+					list += line + eof()
+					continue
+				}
+			}
+		} else {
+			if re.MatchString(line) {
+				list += "config_version: '" + re.FindStringSubmatch(line)[1] + ".minimal'" + eof()
+			} else {
+				list += line + eof()
+			}
+		}
+	}
+
+	err := ioutil.WriteFile(d, []byte(list), 0644)
+	if err != nil {
+		color.Error.Printf("Failed to write %s"+eof(), d)
+	}
+}
+
+func minEssay(s string) {
+	f, _ := ioutil.ReadFile(s)
+	essay := ""
+	scanner := bufio.NewScanner(strings.NewReader(string(f)))
+	re := regexp.MustCompile(`^.*\s+(.*)$`)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if re.MatchString(line) {
+			idx := re.FindStringSubmatch(line)[1]
+			i, _ := strconv.Atoi(idx)
+			if i >= 500 {
+				essay += line + eof()
+			}
+		}
+	}
+	err := ioutil.WriteFile(s, []byte(essay), 0644)
+	if err != nil {
+		color.Error.Printf("Failed to write %s"+eof(), s)
+	}
+}
+
+func minLuna(s string) {
+	f, _ := ioutil.ReadFile(s)
+	scanner := bufio.NewScanner(strings.NewReader(string(f)))
+	luna := ""
+	re := regexp.MustCompile(`^version:\s+\"(.*)\"$`)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "#以下") {
+			break
+		}
+		if re.MatchString(line) {
+			luna += "version:\t\"" + re.FindStringSubmatch(line)[1] + ".minimal\"" + eof()
+		} else {
+			luna += line + eof()
+		}
+	}
+	err := ioutil.WriteFile(s, []byte(luna), 0644)
+	if err != nil {
+		color.Error.Printf("Failed to write file %s"+eof(), s)
+	}
+}
+
+func minSchema(s string) {
+	f, _ := ioutil.ReadFile(s)
+	scanner := bufio.NewScanner(strings.NewReader(string(f)))
+	schema := ""
+	re := regexp.MustCompile(`(\s+version:\s+)\"(.*)\"$`)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if re.MatchString(line) {
+			m := re.FindStringSubmatch(line)
+			schema += m[1] + "\"" + m[2] + ".minimal\"" + eof()
+			continue
+		}
+		if strings.Contains(line, "- stroke") {
+			schema += "#" + line + eof()
+			continue
+		}
+		if strings.Contains(line, "- reverse_lookup_translator") {
+			schema += "#" + line + eof()
+		}
+		schema += line + eof()
+	}
+	err := ioutil.WriteFile(s, []byte(schema), 0644)
+	if err != nil {
+		color.Error.Printf("Failed to write file %s"+eof(), s)
+	}
+}
+
 func main() {
 	var recipeStr, rimeDir string
+	var build bool
 	flag.StringVar(&recipeStr, "r", "", "pass recipe url and commands.")
 	flag.StringVar(&rimeDir, "d", "", "where to install recipes.")
+	flag.BoolVar(&build, "b", false, "whether to build packages.")
 	flag.Parse()
 
 	if len(rimeDir) == 0 {
@@ -556,4 +688,7 @@ func main() {
 	recipes := parseRecipes(recipeStrs)
 	cloneOrUpdateRepos(recipes, rimeDir)
 	installPackages(recipes, rimeDir)
+	if build {
+		buildPackages(rimeDir)
+	}
 }
