@@ -5,6 +5,8 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/gookit/color"
+	"github.com/marguerite/util/command"
 	"github.com/marguerite/util/dirutils"
 	"github.com/marguerite/util/fileutils"
 	"github.com/marguerite/util/slice"
@@ -13,6 +15,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/user"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -24,6 +27,21 @@ var (
 	reConf   string = "(@([\\w]+)|\\/.*?\\/([^\\/]+))?\\/(.*?-packages.conf)"
 	reRecipe string = "(@([^:]+))?(:(\\w+))?(:(.*))?"
 )
+
+func eof() string {
+	if runtime.GOOS == "windows" {
+		return "\r\n"
+	}
+	return "\n"
+}
+
+func joinPath(s ...string) string {
+	path := ""
+	for _, v := range s {
+		path = filepath.Join(path, v)
+	}
+	return path
+}
 
 func presetRecipes() []string {
 	return []string{"bopomofo", "cangjie", "essay", "luna-pinyin", "prelude", "stroke", "terra-pinyin"}
@@ -111,7 +129,7 @@ func parseRecipes(strs []string) Recipes {
 	re := regexp.MustCompile(reURL + reRecipe)
 	for _, s := range strs {
 		if !re.MatchString(s) {
-			fmt.Printf("can't parse recipe URL %s.\n", s)
+			color.Warn.Printf("can't parse recipe URL %s."+eof(), s)
 			continue
 		}
 		m := re.FindStringSubmatch(s)
@@ -198,17 +216,6 @@ func fetchRemoteRecipes(conf string) ([]string, error) {
 	return o, nil
 }
 
-func getEnv(env string) (string, error) {
-	val, ok := os.LookupEnv(env)
-	if !ok {
-		return "", fmt.Errorf("%s not set.", env)
-	}
-	if len(val) == 0 {
-		return val, fmt.Errorf("%s is empty.", env)
-	}
-	return val, nil
-}
-
 func parseRecipeStrs(args []string) []string {
 	recipes := []string{}
 	for _, recipe := range args {
@@ -232,42 +239,53 @@ func parseRecipeStrs(args []string) []string {
 }
 
 func getDir(dir string) string {
-	d, err := getEnv(dir)
+	d, err := command.Environ(dir)
 	if err == nil {
 		return d
 	}
 	// guess based on operating system
 	if runtime.GOOS == "windows" {
-		d, _ := getEnv("APPDATA")
+		d, _ := command.Environ("APPDATA")
 		return filepath.Join(d, "Rime")
 	}
 	if runtime.GOOS == "darwin" {
-		d, _ := getEnv("HOME")
+		d, _ := command.Environ("HOME")
 		return filepath.Join(d, "Library/Rime")
 	}
 	return getRimeDirLinux()
 }
 
 func getRimeDirLinux() string {
-	im, err := getEnv("GTK_IM_MODULE")
+	im, err := command.Environ("GTK_IM_MODULE")
 	if err != nil {
 		// detect by binary
+		for _, v := range []string{"ibus", "fcitx", "fcitx5"} {
+			if val, err := command.Search(v); err == nil {
+				return val
+			}
+		}
 	}
-	// system root ? /usr/share/rime-data
-	home, _ := getEnv("HOME")
+
+	// system root?
+	currentUser, _ := user.Current()
+	if currentUser.Uid == "0" || currentUser.Username == "root" {
+		return "/usr/share/rime-data"
+	}
+
+	home, _ := command.Environ("HOME")
 	im = strings.Replace(im, "@im=", "", 1)
 	switch im {
 	case "fcitx":
-		fmt.Println("Installing for Rime Frontend: fcitx-rime")
+		color.Info.Println("Installing for Rime Frontend: fcitx-rime")
 		return filepath.Join(home, ".config/fcitx/rime")
 	case "fcitx5":
-		fmt.Println("Installing for Rime Frontend: fcitx5-rime")
+		color.Info.Println("Installing for Rime Frontend: fcitx5-rime")
 		return filepath.Join(home, ".config/fcitx5/rime")
 	case "ibus":
-		fmt.Println("Installing for Rime Frontend: ibus-rime")
+		color.Info.Println("Installing for Rime Frontend: ibus-rime")
 		return filepath.Join(home, ".config/ibus/rime")
 	default:
-		fmt.Printf("Unkown Rime Frontend: %s\n", im)
+		color.Warn.Printf("Unkown Rime Frontend: %s"+eof(), im)
 		os.Exit(1)
 	}
 	return ""
@@ -275,32 +293,47 @@ func getRimeDirLinux() string {
 
 func cloneOrUpdateRepos(urls Recipes, rimeDir string) {
 	for _, v := range urls {
-		pkgDir, _ := filepath.Abs(rimeDir + "/package/" + v.User + "/" + strings.Replace(v.Repo, "rime-", "", -1))
+		pkgDir, _ := filepath.Abs(joinPath(rimeDir, "package", v.User, strings.Replace(v.Repo, "rime-", "", -1)))
 		v.SetDir(pkgDir)
 		if _, err := os.Stat(pkgDir); os.IsNotExist(err) {
-			fmt.Printf("Cloneing %s to %s.\n", v.Repo, pkgDir)
+			color.Info.Printf("Fetching %s to %s"+eof(), v.Repo, pkgDir)
 			_, err := git.PlainClone(pkgDir, false, &git.CloneOptions{
-				URL:           v.URL(),
-				ReferenceName: plumbing.NewBranchReferenceName(v.Branch),
-				SingleBranch:  true})
-			fmt.Println(err)
+				URL:               v.URL(),
+				ReferenceName:     plumbing.NewBranchReferenceName(v.Branch),
+				RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
+				Depth:             1})
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
 		} else {
-			fmt.Printf("Updating %s.\n", pkgDir)
+			color.Info.Printf("Updating %s"+eof(), pkgDir)
 			// Switch branch?
 			r, err := git.PlainOpen(pkgDir)
 			if err != nil {
-				// not git working dir
+				color.Error.Printf("%s is not a valid git repository"+eof(), pkgDir)
+				os.Exit(1)
 			}
 			w, err := r.Worktree()
 			if err != nil {
+				color.Error.Printf("%s doesn't contains any worktree"+eof(), pkgDir)
+				os.Exit(1)
 			}
 			err = w.Pull(&git.PullOptions{RemoteName: "origin"})
 			if err != nil {
 				if err.Error() == "already up-to-date" {
-					fmt.Printf("%s already up-to-date.\n", v.URL())
-					continue
+					color.Warn.Printf("%s already up-to-date"+eof(), v.URL())
+				} else {
+					color.Error.Printf("Failed to pull repository %s: %s"+eof(), v.URL(), err.Error())
+					os.Exit(1)
 				}
-				fmt.Printf("Failed to pull repository %s: %s.\n", v.URL(), err.Error())
+			}
+			err = w.Checkout(&git.CheckoutOptions{
+				Branch: plumbing.NewBranchReferenceName(v.Branch),
+				Force:  true,
+			})
+			if err != nil {
+				color.Error.Printf("Failed to checkout branch %s"+eof(), v.Branch)
 				os.Exit(1)
 			}
 		}
@@ -317,27 +350,27 @@ type RecipeConf struct {
 
 func parseRecipeConf(recipeFile string, recipe Recipe) RecipeConf {
 	if _, err := os.Stat(recipeFile); os.IsNotExist(err) {
-		fmt.Printf("Recipe not found %s\n", recipeFile)
+		color.Error.Printf("Recipe not found %s"+eof(), recipeFile)
 		os.Exit(1)
 	}
 	f, err := ioutil.ReadFile(recipeFile)
 	if err != nil {
-		fmt.Printf("Can not read %s: %s\n", recipeFile, err.Error())
+		color.Error.Printf("Can not read %s: %s"+eof(), recipeFile, err.Error())
 		os.Exit(1)
 	}
 	re := regexp.MustCompile(`(?s)Rx:\s+(\w+).*?args:(.*?)description.*?(install_files:.*?\n(.*)\n\n)?patch_files:\n(.*)`)
 	if !re.MatchString(string(f)) {
-		fmt.Printf("Recipe file's format is wrong: %s\n", recipeFile)
+		color.Error.Printf("Recipe file's format is wrong: %s"+eof(), recipeFile)
 		os.Exit(1)
 	}
 	m := re.FindStringSubmatch(string(f))
 	if m[1] != recipe.Name {
-		fmt.Printf("Invalid Recipe %s doesn't match file name %s\n", m[1], recipe.Name)
+		color.Error.Printf("Invalid Recipe %s doesn't match file name %s"+eof(), m[1], recipe.Name)
 		os.Exit(1)
 	}
 	files := []string{}
 	if len(m[3]) > 0 {
-		files = strings.Split(strings.TrimSpace(m[4]), "\n")
+		files = strings.Split(strings.TrimSpace(m[4]), eof())
 	}
 	return RecipeConf{m[1], parseRecipeArgs(m[2], recipe.Options), files, strings.TrimSpace(m[5])}
 }
@@ -436,12 +469,12 @@ func parsePatch(content string, args map[string]string, recipe Recipe) (string, 
 		if i == 0 {
 			file += strings.Replace(str, ":", "", 1)
 		} else {
-			patch += sep + str + "\n"
+			patch += sep + str + eof()
 			sep = strings.Repeat(sep, 2)
 		}
 		i++
 	}
-	return patch + "# }\n", file
+	return patch + "# }" + eof(), file
 }
 
 func installPackages(recipes Recipes, dst string) {
@@ -460,19 +493,34 @@ func installPackages(recipes Recipes, dst string) {
 
 func installRecipe(recipeFile, dst string, recipe Recipe) {
 	rx := recipe.Repo + "/" + recipe.Name
-	fmt.Printf("Installing recipe: %s\n", rx)
-	fmt.Printf("\t- option: %s\n", recipe.Options)
+	color.Info.Printf("Installing recipe: %s"+eof(), rx)
+	color.Info.Printf("\t- option: %s"+eof(), recipe.Options)
 	r := parseRecipeConf(recipeFile, recipe)
 	applyInstallFiles(r.Files, filepath.Dir(recipeFile), dst)
 	patchContent, patchFile := parsePatch(r.Patch, r.Args, recipe)
 	dst = filepath.Join(dst, patchFile)
 	if _, err := os.Stat(dst); os.IsNotExist(err) {
-		ioutil.WriteFile(dst, []byte("__patch:\n"+patchContent), 0644)
+		err = ioutil.WriteFile(dst, []byte("__patch:\n"+patchContent), 0644)
+		if err != nil {
+			color.Error.Printf("Failed to write %s"+eof(), dst)
+			os.Exit(1)
+		}
 	} else {
-		f, _ := ioutil.ReadFile(dst)
+		f, err := ioutil.ReadFile(dst)
+		if err != nil {
+			color.Error.Printf("Failed to read existing %s"+eof(), dst)
+			os.Exit(1)
+		}
 		re := regexp.MustCompile("(?s)# RX:.*?{\n.*}\n")
 		if re.MatchString(string(f)) {
-			ioutil.WriteFile(dst, []byte(strings.Replace(string(f), re.FindStringSubmatch(string(f))[0], patchContent, 1)), 0644)
+			err := ioutil.WriteFile(dst, []byte(strings.Replace(string(f), re.FindStringSubmatch(string(f))[0], patchContent, 1)), 0644)
+			if err != nil {
+				color.Error.Printf("Failed to write %s"+eof(), dst)
+				os.Exit(1)
+			}
+		} else {
+			color.Error.Printf("%s doesn't contain any recipe/patch"+eof(), dst)
+			os.Exit(1)
 		}
 	}
 }
@@ -480,9 +528,17 @@ func installRecipe(recipeFile, dst string, recipe Recipe) {
 func installFilesFromDir(dir, dst string) {
 	pattern := []string{".*\\.yaml", ".*\\.txt", ".*\\.gram", "opencc\\/.*\\..*"}
 	ex := []string{"(custom|recipe)\\.yaml", "opencc\\/", "", "\\.(json|ocd|txt)"}
-	files, _ := dirutils.Glob(dir, pattern, ex)
+	files, err := dirutils.Glob(dir, pattern, ex)
+	if err != nil {
+		color.Error.Printf("Can not find qualified files in %s"+eof(), dir)
+		os.Exit(1)
+	}
 	for _, v := range files {
-		fileutils.Copy(v, dst)
+		err := fileutils.Copy(v, dst)
+		if err != nil {
+			color.Error.Printf("Failed to copy %s to %s"+eof(), v, dst)
+			os.Exit(1)
+		}
 	}
 }
 
