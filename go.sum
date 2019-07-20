@@ -31,8 +31,8 @@ github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORN
 github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
 github.com/kr/text v0.1.0 h1:45sCR5RtlFHMR4UwH9sdQ5TC8v0qDQCHnXt+kaKSTVE=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
-github.com/marguerite/util v0.0.0-20190713040954-f1a1f4c87065 h1:LSA34jXs2hGfA1uSqzxHktWnL60S1cQ0E4hs+Bpiu0k=
-github.com/marguerite/util v0.0.0-20190713040954-f1a1f4c87065/go.mod h1:O9sK+ae5egCLsW7GODcULahgSNJ5P3XNSPgccfyr87E=
+github.com/marguerite/util v0.0.0-20190720063237-0f39220b0896 h1:rvTyNBDtKVpZf+27fE7C7ZsGPsJ8tP5C3PtClbaqR4U=
+github.com/marguerite/util v0.0.0-20190720063237-0f39220b0896/go.mod h1:O9sK+ae5egCLsW7GODcULahgSNJ5P3XNSPgccfyr87E=
 github.com/mitchellh/go-homedir v1.1.0 h1:lukF9ziXFxDFPkA1vsr5zpc1XuPDn/wFntq5mG+4E0Y=
 github.com/mitchellh/go-homedir v1.1.0/go.mod h1:SfyaCUpYCn1Vlf4IUYiD9fPX4A5wJrkLzIz1N1q0pr0=
 github.com/pelletier/go-buffruneio v0.2.0 h1:U4t4R6YkofJ5xHm3dJzuRpPZ0mr5MMCoAWooScCR7aA=
