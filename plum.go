@@ -414,7 +414,11 @@ func applyInstallFiles(files []string, src, dst string) {
 			continue
 		}
 		f = strings.TrimLeft(f, "- ")
-		fileutils.Copy(filepath.Join(src, f), dst)
+		err := fileutils.Copy(filepath.Join(src, f), dst)
+		if err != nil {
+			color.Error.Printf("Failed to copy %s to %s"+eof(), filepath.Join(src, f), dst)
+			os.Exit(1)
+		}
 	}
 }
 
@@ -560,7 +564,7 @@ func buildPackages(dir string) {
 	if err != nil {
 		color.Error.Printf("Failed to run command: %s"+eof(), "/usr/bin/rime_deployer --build "+dir)
 	}
-	err = fileutils.Remove(filepath.Join(dir, "user.yaml"))
+	err = os.RemoveAll(filepath.Join(dir, "user.yaml"))
 	if err != nil {
 		color.Error.Printf("Failed to remove %s"+eof(), filepath.Join(dir, "user.yaml"))
 	}
