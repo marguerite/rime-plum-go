@@ -5,13 +5,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/gookit/color"
-	"github.com/marguerite/util/command"
-	"github.com/marguerite/util/dirutils"
-	"github.com/marguerite/util/fileutils"
-	"github.com/marguerite/util/slice"
-	"gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/plumbing"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -21,12 +14,25 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+
+	git "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/gookit/color"
+	"github.com/marguerite/util/command"
+	"github.com/marguerite/util/dir"
+	"github.com/marguerite/util/fileutils"
+	"github.com/marguerite/util/slice"
 )
 
 var (
-	reURL    string = "(http(s)?:\\/\\/[^\\/]+\\/)?([^\\/]+\\/)?([^\\/@:]+)"
-	reConf   string = "(@([\\w]+)|\\/.*?\\/([^\\/]+))?\\/(.*?-packages.conf)"
-	reRecipe string = "(@([^:]+))?(:(\\w+))?(:(.*))?"
+	reURL    = "(http(s)?:\\/\\/[^\\/]+\\/)?([^\\/]+\\/)?([^\\/@:]+)"
+	reConf   = "(@([\\w]+)|\\/.*?\\/([^\\/]+))?\\/(.*?-packages.conf)"
+	reRecipe = "(@([^:]+))?(:(\\w+))?(:(.*))?"
+)
+
+const (
+	github = "https://github.com"
+	rime   = "rime"
 )
 
 func eof() string {
@@ -34,14 +40,6 @@ func eof() string {
 		return "\r\n"
 	}
 	return "\n"
-}
-
-func joinPath(s ...string) string {
-	path := ""
-	for _, v := range s {
-		path = filepath.Join(path, v)
-	}
-	return path
 }
 
 func presetRecipes() []string {
@@ -62,7 +60,7 @@ func parsePackagesConf(conf string) ([]string, error) {
 	recipes := []string{}
 	re := regexp.MustCompile(`(?s)package_list(\+)?=\(\n(.*?)\)`)
 	if !re.MatchString(conf) {
-		return recipes, errors.New("Not a valid *-packages.conf.")
+		return recipes, errors.New("not a valid *-packages.conf")
 	}
 	scanner := bufio.NewScanner(strings.NewReader(re.FindStringSubmatch(conf)[2]))
 	for scanner.Scan() {
@@ -98,14 +96,10 @@ type Recipe struct {
 // URL print the Recipe's URL
 func (r Recipe) URL() string {
 	repo := r.Repo
-	if r.Prefix == "https://github.com/" && r.User == "rime" && !strings.HasPrefix(r.Repo, "rime-") {
+	if r.Prefix == github && r.User == rime && !strings.HasPrefix(r.Repo, "rime-") {
 		repo = "rime-" + repo
 	}
-	return r.Prefix + r.User + "/" + repo
-}
-
-func (r *Recipe) SetDir(d string) {
-	r.Dir = d
+	return r.Prefix+"/"+r.User+"/"+repo
 }
 
 // Recipes a slice of *Recipe
@@ -114,10 +108,10 @@ type Recipes []*Recipe
 // NewRecipe generate a new Recipe object
 func NewRecipe(prefix, user, repo, branch, name, options string) Recipe {
 	if len(prefix) == 0 {
-		prefix = "https://github.com/"
+		prefix = github
 	}
 	if len(user) == 0 {
-		user = "rime"
+		user = rime
 	}
 	if len(branch) == 0 {
 		branch = "master"
@@ -130,7 +124,7 @@ func parseRecipes(strs []string) Recipes {
 	re := regexp.MustCompile(reURL + reRecipe)
 	for _, s := range strs {
 		if !re.MatchString(s) {
-			color.Warn.Printf("can't parse recipe URL %s."+eof(), s)
+			color.Warn.Printf("can't parse recipe URL %s"+eof(), s)
 			continue
 		}
 		m := re.FindStringSubmatch(s)
@@ -141,12 +135,12 @@ func parseRecipes(strs []string) Recipes {
 		name := m[8]
 		options := m[10]
 		if len(prefix) == 0 {
-			prefix = "https://github.com/"
+			prefix = github
 		}
 		if len(user) == 0 {
-			user = "rime"
+			user = rime
 		} else {
-			user = strings.Replace(user, "/", "", -1)
+			user = strings.ReplaceAll(user, "/", "")
 		}
 		if len(branch) == 0 {
 			branch = "master"
@@ -161,7 +155,7 @@ func parseRecipes(strs []string) Recipes {
 func remoteRecipeURL(conf string) (string, error) {
 	re := regexp.MustCompile(reURL + reConf)
 	if !re.MatchString(conf) {
-		return conf, errors.New("Not valid configuration URL.")
+		return conf, errors.New("not valid configuration URL")
 	}
 	m := re.FindStringSubmatch(conf)
 	prefix := m[1]
@@ -170,18 +164,18 @@ func remoteRecipeURL(conf string) (string, error) {
 	path := m[5]
 	pkgconf := m[8]
 	if len(prefix) == 0 {
-		prefix = "https://github.com/"
+		prefix = github
 	}
 	if len(user) == 0 {
-		user = "rime"
+		user = rime
 	} else {
-		user = strings.Replace(user, "/", "", -1)
+		user = strings.ReplaceAll(user, "/", "")
 	}
 	if len(path) == 0 {
 		path = "/raw/master/"
 	}
 	if strings.HasPrefix(path, "@") {
-		path = "/raw/" + strings.Replace(path, "@", "", -1) + "/"
+		path = "/raw/" + strings.ReplaceAll(path, "@", "") + "/"
 	}
 	url := prefix + user + "/" + repo + path + pkgconf
 	return url, nil
@@ -201,7 +195,7 @@ func fetchRemoteRecipes(conf string) ([]string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return recipes, fmt.Errorf("%s not fetched, status %d.", url, resp.StatusCode)
+		return recipes, fmt.Errorf("%s not fetched, status %d", url, resp.StatusCode)
 	}
 
 	b, err := ioutil.ReadAll(resp.Body)
@@ -294,8 +288,8 @@ func getRimeDirLinux() string {
 
 func cloneOrUpdateRepos(urls Recipes, rimeDir string) {
 	for _, v := range urls {
-		pkgDir, _ := filepath.Abs(joinPath(rimeDir, "package", v.User, strings.Replace(v.Repo, "rime-", "", -1)))
-		v.SetDir(pkgDir)
+		pkgDir, _ := filepath.Abs(filepath.Join(rimeDir, "package", v.User, strings.ReplaceAll(v.Repo, "rime-", "")))
+		v.Dir = pkgDir
 		if _, err := os.Stat(pkgDir); os.IsNotExist(err) {
 			color.Info.Printf("Fetching %s to %s"+eof(), v.Repo, pkgDir)
 			_, err := git.PlainClone(pkgDir, false, &git.CloneOptions{
@@ -310,7 +304,7 @@ func cloneOrUpdateRepos(urls Recipes, rimeDir string) {
 		} else {
 			color.Info.Printf("Updating %s"+eof(), pkgDir)
 			// Switch branch?
-			r, err := git.PlainOpen(pkgDir)
+			/*r, err := git.PlainOpen(pkgDir)
 			if err != nil {
 				color.Error.Printf("%s is not a valid git repository"+eof(), pkgDir)
 				os.Exit(1)
@@ -336,7 +330,7 @@ func cloneOrUpdateRepos(urls Recipes, rimeDir string) {
 			if err != nil {
 				color.Error.Printf("Failed to checkout branch %s"+eof(), v.Branch)
 				os.Exit(1)
-			}
+			}*/
 		}
 	}
 }
@@ -428,13 +422,13 @@ func replacePatchVariable(s string, m [][]string, args map[string]string) string
 		var re *regexp.Regexp
 		switch v[3] {
 		case "%":
-			re = regexp.MustCompile("(.*?)" + strings.Replace(v[4], "\\", "\\\\", -1) + ".*?$")
+			re = regexp.MustCompile("(.*?)" + strings.ReplaceAll(v[4], "\\", "\\\\") + ".*?$")
 		case "%%":
-			re = regexp.MustCompile("(.*?)" + strings.Replace(v[4], "\\", "\\\\", -1) + ".*$")
+			re = regexp.MustCompile("(.*?)" + strings.ReplaceAll(v[4], "\\", "\\\\") + ".*$")
 		case "#":
-			re = regexp.MustCompile("^.*?" + strings.Replace(v[4], "\\", "\\\\", -1) + "(.*?)")
+			re = regexp.MustCompile("^.*?" + strings.ReplaceAll(v[4], "\\", "\\\\") + "(.*?)")
 		case "##":
-			re = regexp.MustCompile("^.*" + strings.Replace(v[4], "\\", "\\\\", -1) + "(.*?)")
+			re = regexp.MustCompile("^.*" + strings.ReplaceAll(v[4], "\\", "\\\\") + "(.*?)")
 		default:
 			re = regexp.MustCompile("")
 		}
@@ -455,31 +449,55 @@ func replacePatchVariable(s string, m [][]string, args map[string]string) string
 }
 
 // replace args variable to string in patchContent
-func parsePatch(content string, args map[string]string, recipe Recipe) (string, string) {
-	s := bufio.NewScanner(strings.NewReader(content))
-	patch := "# RX: " + recipe.Repo + ":" + recipe.Name + ":" + recipe.Options + " {\n"
-	file := ""
-	re := regexp.MustCompile(`\$\{(.*?)(([%#:-]+)(.*?))?\}`)
-	i := 0
-	sep := "\t"
-	for s.Scan() {
-		line := strings.TrimSpace(s.Text())
-		str := ""
-		if re.MatchString(line) {
-			m := re.FindAllStringSubmatch(line, -1)
-			str += replacePatchVariable(line, m, args)
-		} else {
-			str += line
+func parsePatch(content string, args map[string]string, recipe Recipe) map[string]string {
+	// split content
+	rd := bufio.NewScanner(strings.NewReader(content))
+	contents := []string{}
+	tmp := ""
+	idx := 0
+	for rd.Scan() {
+		if strings.HasSuffix(rd.Text(), ".yaml:") {
+			idx++
 		}
-		if i == 0 {
-			file += strings.Replace(str, ":", "", 1)
-		} else {
-			patch += sep + str + eof()
-			sep = strings.Repeat(sep, 2)
+		if idx > 1 {
+			contents = append(contents, tmp)
+			tmp = ""
+			idx = 1
 		}
-		i++
+		tmp += rd.Text() + eof()
 	}
-	return patch + "# }" + eof(), file
+	// write the last part
+	contents = append(contents, tmp)
+
+	patches := map[string]string{}
+
+	for _, c := range contents {
+		reader := bufio.NewScanner(strings.NewReader(c))
+		patch := "# RX: " + recipe.Repo + ":" + recipe.Name + ":" + recipe.Options + " {\n"
+		file := ""
+		re := regexp.MustCompile(`\$\{(.*?)(([%#:-]+)(.*?))?\}`)
+		i := 0
+		sep := "\t"
+		for reader.Scan() {
+			line := strings.TrimSpace(reader.Text())
+			str := ""
+			if re.MatchString(line) {
+				m := re.FindAllStringSubmatch(line, -1)
+				str += replacePatchVariable(line, m, args)
+			} else {
+				str += line
+			}
+			if i == 0 {
+				file += strings.Replace(str, ":", "", 1)
+			} else {
+				patch += sep + str + eof()
+				sep = strings.Repeat(sep, 2)
+			}
+			i++
+		}
+		patches[file] = patch + "# }" + eof()
+	}
+	return patches
 }
 
 func installPackages(recipes Recipes, dst string) {
@@ -502,40 +520,44 @@ func installRecipe(recipeFile, dst string, recipe Recipe) {
 	color.Info.Printf("\t- option: %s"+eof(), recipe.Options)
 	r := parseRecipeConf(recipeFile, recipe)
 	applyInstallFiles(r.Files, filepath.Dir(recipeFile), dst)
-	patchContent, patchFile := parsePatch(r.Patch, r.Args, recipe)
-	dst = filepath.Join(dst, patchFile)
-	if _, err := os.Stat(dst); os.IsNotExist(err) {
-		err = ioutil.WriteFile(dst, []byte("__patch:\n"+patchContent), 0644)
-		if err != nil {
-			color.Error.Printf("Failed to write %s"+eof(), dst)
-			os.Exit(1)
-		}
-	} else {
-		f, err := ioutil.ReadFile(dst)
-		if err != nil {
-			color.Error.Printf("Failed to read existing %s"+eof(), dst)
-			os.Exit(1)
-		}
-		re := regexp.MustCompile("(?s)# RX:.*?{\n.*}\n")
-		if re.MatchString(string(f)) {
-			err := ioutil.WriteFile(dst, []byte(strings.Replace(string(f), re.FindStringSubmatch(string(f))[0], patchContent, 1)), 0644)
+	patches := parsePatch(r.Patch, r.Args, recipe)
+	fmt.Println(patches)
+	for k, v := range patches {
+		dst = filepath.Join(dst, k)
+		fmt.Println(dst)
+		if _, err := os.Stat(dst); os.IsNotExist(err) {
+			err = ioutil.WriteFile(dst, []byte("__patch:\n"+v), 0644)
 			if err != nil {
 				color.Error.Printf("Failed to write %s"+eof(), dst)
 				os.Exit(1)
 			}
 		} else {
-			color.Error.Printf("%s doesn't contain any recipe/patch"+eof(), dst)
-			os.Exit(1)
+			f, err := ioutil.ReadFile(dst)
+			if err != nil {
+				color.Error.Printf("Failed to read existing %s"+eof(), dst)
+				os.Exit(1)
+			}
+			re := regexp.MustCompile("(?s)# RX:.*?{\n.*}\n")
+			if re.MatchString(string(f)) {
+				err := ioutil.WriteFile(dst, []byte(strings.Replace(string(f), re.FindStringSubmatch(string(f))[0], v, 1)), 0644)
+				if err != nil {
+					color.Error.Printf("Failed to write %s"+eof(), dst)
+					os.Exit(1)
+				}
+			} else {
+				color.Error.Printf("%s doesn't contain any recipe/patch"+eof(), dst)
+				os.Exit(1)
+			}
 		}
 	}
 }
 
-func installFilesFromDir(dir, dst string) {
+func installFilesFromDir(d, dst string) {
 	pattern := []string{".*\\.yaml", ".*\\.txt", ".*\\.gram", "opencc\\/.*\\..*"}
 	ex := []string{"(custom|recipe)\\.yaml", "opencc\\/", "", "\\.(json|ocd|txt)"}
-	files, err := dirutils.Glob(dir, pattern, ex)
+	files, err := dir.Glob(d, pattern, ex)
 	if err != nil {
-		color.Error.Printf("Can not find qualified files in %s"+eof(), dir)
+		color.Error.Printf("Can not find qualified files in %s"+eof(), d)
 		os.Exit(1)
 	}
 	for _, v := range files {
@@ -547,26 +569,26 @@ func installFilesFromDir(dir, dst string) {
 	}
 }
 
-func buildPackages(dir string) {
-	files, _ := dirutils.Ls(dir)
+func buildPackages(d string) {
+	files, _ := dir.Ls(d)
 	if ok, _ := slice.Contains(files, "essay.txt"); ok {
-		minEssay(filepath.Join(dir, "essay.txt"))
+		minEssay(filepath.Join(d, "essay.txt"))
 	}
 	if ok, _ := slice.Contains(files, "luna_pinyin.dict.yaml"); ok {
-		minLuna(filepath.Join(dir, "luna_pinyin.dict.yaml"))
+		minLuna(filepath.Join(d, "luna_pinyin.dict.yaml"))
 	}
-	schemas, _ := dirutils.Glob(dir, regexp.MustCompile(`.*\.schema.yaml$`))
+	schemas, _ := dir.Glob(d, regexp.MustCompile(`.*\.schema.yaml$`))
 	for _, v := range schemas {
 		minSchema(v)
 	}
 	overrideDefaultYaml(schemas)
-	_, _, err := command.Run("/usr/bin/rime_deployer", "--build", dir)
+	_, _, err := command.Run("/usr/bin/rime_deployer", "--build", d)
 	if err != nil {
-		color.Error.Printf("Failed to run command: %s"+eof(), "/usr/bin/rime_deployer --build "+dir)
+		color.Error.Printf("Failed to run command: %s"+eof(), "/usr/bin/rime_deployer --build "+d)
 	}
-	err = os.RemoveAll(filepath.Join(dir, "user.yaml"))
+	err = os.RemoveAll(filepath.Join(d, "user.yaml"))
 	if err != nil {
-		color.Error.Printf("Failed to remove %s"+eof(), filepath.Join(dir, "user.yaml"))
+		color.Error.Printf("Failed to remove %s"+eof(), filepath.Join(d, "user.yaml"))
 	}
 }
 

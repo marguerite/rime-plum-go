@@ -12,6 +12,8 @@ package color
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"regexp"
 )
 
@@ -31,16 +33,21 @@ const (
 	FullColorTpl = "\x1b[%sm%s\x1b[0m"
 )
 
-// ResetSet 重置/正常 关闭所有属性。
+// ResetSet Close all properties.
 const ResetSet = "\x1b[0m"
 
 // CodeExpr regex to clear color codes eg "\033[1;36mText\x1b[0m"
 const CodeExpr = `\033\[[\d;?]+m`
 
-// Enable switch color display
-var Enable = true
-
 var (
+	// Enable switch color render and display
+	Enable = true
+	// RenderTag render HTML tag on call color.Xprint, color.PrintX
+	RenderTag = true
+	// errors on windows render OR print to io.Writer
+	errors []error
+	// output the default io.Writer message print
+	output io.Writer = os.Stdout
 	// mark current env, It's like in `cmd.exe`
 	// if not in windows, is's always is False.
 	isLikeInCmd bool
@@ -62,9 +69,9 @@ func Set(colors ...Color) (int, error) {
 	}
 
 	// on windows cmd.exe
-	if isLikeInCmd {
-		return winSet(colors...)
-	}
+	// if isLikeInCmd {
+	// 	return winSet(colors...)
+	// }
 
 	return fmt.Printf(SettingTpl, colors2code(colors...))
 }
@@ -76,16 +83,63 @@ func Reset() (int, error) {
 	}
 
 	// on windows cmd.exe
-	if isLikeInCmd {
-		return winReset()
-	}
+	// if isLikeInCmd {
+	// 	return winReset()
+	// }
 
 	return fmt.Print(ResetSet)
 }
 
 // Disable disable color output
-func Disable() {
+func Disable() bool {
+	oldVal := Enable
 	Enable = false
+	return oldVal
+}
+
+// NotRenderTag on call color.Xprint, color.PrintX
+func NotRenderTag() {
+	RenderTag = false
+}
+
+// SetOutput set default colored text output
+func SetOutput(w io.Writer) {
+	output = w
+}
+
+// ResetOutput reset output
+func ResetOutput() {
+	output = os.Stdout
+}
+
+// ResetOptions reset all package option setting
+func ResetOptions() {
+	RenderTag = true
+	Enable = true
+	output = os.Stdout
+}
+
+// ForceColor force open color render
+func ForceColor() bool {
+	return ForceOpenColor()
+}
+
+// ForceOpenColor force open color render
+func ForceOpenColor() bool {
+	oldVal := isSupportColor
+	isSupportColor = true
+
+	return oldVal
+}
+
+// IsLikeInCmd check result
+func IsLikeInCmd() bool {
+	return isLikeInCmd
+}
+
+// GetErrors info
+func GetErrors() []error {
+	return errors
 }
 
 /*************************************************************
@@ -96,7 +150,28 @@ func Disable() {
 // Usage:
 // 	msg := RenderCode("3;32;45", "some", "message")
 func RenderCode(code string, args ...interface{}) string {
-	message := fmt.Sprint(args...)
+	var message string
+	if ln := len(args); ln == 0 {
+		return ""
+	}
+
+	message = fmt.Sprint(args...)
+	if len(code) == 0 {
+		return message
+	}
+
+	// disabled OR not support color
+	if !Enable || !isSupportColor {
+		return ClearCode(message)
+	}
+
+	return fmt.Sprintf(FullColorTpl, code, message)
+}
+
+// RenderWithSpaces Render code with spaces.
+// If the number of args is > 1, a space will be added between the args
+func RenderWithSpaces(code string, args ...interface{}) string {
+	message := formatArgsForPrintln(args)
 	if len(code) == 0 {
 		return message
 	}
@@ -113,7 +188,6 @@ func RenderCode(code string, args ...interface{}) string {
 // Usage:
 // 	msg := RenderString("3;32;45", "a message")
 func RenderString(code string, str string) string {
-	// some check
 	if len(code) == 0 || str == "" {
 		return str
 	}
@@ -179,17 +253,17 @@ func (p *Printer) Sprintf(format string, a ...interface{}) string {
 
 // Print rendering colored messages
 func (p *Printer) Print(a ...interface{}) {
-	fmt.Print(RenderCode(p.String(), a...))
+	doPrintV2(p.String(), fmt.Sprint(a...))
 }
 
 // Printf format and rendering colored messages
 func (p *Printer) Printf(format string, a ...interface{}) {
-	fmt.Print(RenderString(p.String(), fmt.Sprintf(format, a...)))
+	doPrintV2(p.String(), fmt.Sprintf(format, a...))
 }
 
 // Println rendering colored messages with newline
 func (p *Printer) Println(a ...interface{}) {
-	fmt.Println(RenderCode(p.String(), a...))
+	doPrintlnV2(p.ColorCode, a)
 }
 
 // IsEmpty color code

@@ -1,15 +1,13 @@
 module github.com/marguerite/rime-plum-go
 
+go 1.15
+
 require (
-	github.com/gliderlabs/ssh v0.2.2 // indirect
-	github.com/google/go-cmp v0.3.0 // indirect
-	github.com/gookit/color v1.1.7
-	github.com/kevinburke/ssh_config v0.0.0-20190630040420-2e50c441276c // indirect
-	github.com/marguerite/util v0.0.0-20190720063237-0f39220b0896
-	golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4 // indirect
-	golang.org/x/net v0.0.0-20190628185345-da137c7871d7 // indirect
-	golang.org/x/sys v0.0.0-20190712062909-fae7ac547cb7 // indirect
-	golang.org/x/text v0.3.2 // indirect
-	gopkg.in/src-d/go-billy.v4 v4.3.1 // indirect
-	gopkg.in/src-d/go-git.v4 v4.12.0
+	github.com/go-git/go-git/v5 v5.1.0
+	github.com/gookit/color v1.3.1
+	github.com/imdario/mergo v0.3.11 // indirect
+	github.com/marguerite/util v0.0.0-20200227041307-e5df39a6ecd5
+	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0 // indirect
+	golang.org/x/net v0.0.0-20201002202402-0a1ea396d57c // indirect
+	golang.org/x/sys v0.0.0-20201004230629-f6757f270073 // indirect
 )
