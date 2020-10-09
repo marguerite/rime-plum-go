@@ -50,7 +50,7 @@ func presetRecipes() []string {
 }
 
 func extraRecipes() []string {
-	return []string{"array", "combo-pinyin", "double-pinyin", "emoji", "ipa", "jyutping", "middle-chinese", "pinyin-simp", "quick", "scj", "soutzoe", "stenotype", "wubi", "wugniu"}
+	return []string{"array", "cantonese", "combo-pinyin", "double-pinyin", "emoji", "ipa", "jyutping", "middle-chinese", "pinyin-simp", "quick", "scj", "soutzoe", "stenotype", "wubi", "wugniu"}
 }
 
 func allRecipes() []string {
