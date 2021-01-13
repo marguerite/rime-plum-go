@@ -136,7 +136,7 @@ func parseRecipes(strs []string) Recipes {
 		if len(user) == 0 {
 			user = rime
 		} else {
-			user = strings.ReplaceAll(user, "/", "")
+			user = strings.Trim(user, "/")
 		}
 		if len(branch) == 0 {
 			branch = "master"
@@ -165,13 +165,13 @@ func remoteRecipeURL(conf string) (string, error) {
 	if len(user) == 0 {
 		user = rime
 	} else {
-		user = strings.ReplaceAll(user, "/", "")
+		user = strings.Trim(user, "/")
 	}
 	if len(path) == 0 {
 		path = "/raw/master/"
 	}
 	if strings.HasPrefix(path, "@") {
-		path = "/raw/" + strings.ReplaceAll(path, "@", "") + "/"
+		path = "/raw/" + strings.Trim(path, "@") + "/"
 	}
 	url := prefix + user + "/" + repo + path + pkgconf
 	return url, nil
@@ -265,7 +265,7 @@ func getRimeDirLinux() string {
 	}
 
 	home, _ := exec.Env("HOME")
-	im = strings.ReplaceAll(im, "@im=", "")
+	im = strings.TrimPrefix(im, "@im=")
 	switch im {
 	case "fcitx":
 		color.Info.Println("Installing for Rime Frontend: fcitx-rime")
@@ -298,7 +298,7 @@ func cloneOrUpdateRepos(recipes Recipes, rimeDir string) {
 	client.InstallProtocol("https", githttp.NewClient(c))
 
 	for _, v := range recipes {
-		pkgDir, _ := filepath.Abs(filepath.Join(rimeDir, "package", v.User, strings.ReplaceAll(v.Repo, "rime-", "")))
+		pkgDir, _ := filepath.Abs(filepath.Join(rimeDir, "package", v.User, strings.TrimPrefix(v.Repo, "rime-")))
 		v.Dir = pkgDir
 		if _, err := os.Stat(pkgDir); os.IsNotExist(err) {
 			color.Info.Printf("Fetching %s to %s\n", v.Repo, pkgDir)
@@ -375,7 +375,7 @@ func parseRecipeCfg(recipeFile string, recipe Recipe) RecipeCfg {
 	}
 	files := []string{}
 	if len(m[3]) > 0 {
-		files = strings.Split(strings.ReplaceAll(strings.TrimSpace(m[4]), "\r\n", "\n"), "\n")
+		files = strings.Split(strings.Replace(strings.TrimSpace(m[4]), "\r\n", "\n", -1), "\n")
 	}
 	return RecipeCfg{m[1], parseRecipeArgs(m[2], recipe.Options), files, strings.TrimSpace(m[5])}
 }
@@ -432,13 +432,13 @@ func replacePatchVariable(s string, m [][]string, args map[string]string) string
 		var re *regexp.Regexp
 		switch v[3] {
 		case "%":
-			re = regexp.MustCompile("(.*?)" + strings.ReplaceAll(v[4], "\\", "\\\\") + ".*?$")
+			re = regexp.MustCompile("(.*?)" + strings.Replace(v[4], "\\", "\\\\", -1) + ".*?$")
 		case "%%":
-			re = regexp.MustCompile("(.*?)" + strings.ReplaceAll(v[4], "\\", "\\\\") + ".*$")
+			re = regexp.MustCompile("(.*?)" + strings.Replace(v[4], "\\", "\\\\", -1) + ".*$")
 		case "#":
-			re = regexp.MustCompile("^.*?" + strings.ReplaceAll(v[4], "\\", "\\\\") + "(.*?)")
+			re = regexp.MustCompile("^.*?" + strings.Replace(v[4], "\\", "\\\\", -1) + "(.*?)")
 		case "##":
-			re = regexp.MustCompile("^.*" + strings.ReplaceAll(v[4], "\\", "\\\\") + "(.*?)")
+			re = regexp.MustCompile("^.*" + strings.Replace(v[4], "\\", "\\\\", -1) + "(.*?)")
 		default:
 			re = regexp.MustCompile("")
 		}

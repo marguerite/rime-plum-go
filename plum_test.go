@@ -19,20 +19,20 @@ func TestParsePackagesConf(t *testing.T) {
 	}
 }
 
-func TestNewRecipeUrl(t *testing.T) {
-	result := RecipeURL{"github.com", "rime", "rime-terra-pinyin", "master"}
-	if reflect.DeepEqual(NewRecipeURL("", "", "terra-pinyin", ""), result) {
-		t.Log("NewRecipeURL test passed.")
+func TestNewRecipe(t *testing.T) {
+	result := Recipe{"github.com", "rime", "rime-terra-pinyin", "master", "", "", ""}
+	if reflect.DeepEqual(NewRecipe("", "", "terra-pinyin", "", "", ""), result) {
+		t.Log("NewRecipe test passed.")
 	} else {
-		t.Error("NewRecipeURL test failed.")
+		t.Error("NewRecipe test failed.")
 	}
 }
 
 func TestParseRecipeUrl(t *testing.T) {
-	result := RecipeURLs{RecipeURL{"github.com", "marguerite", "terra-pinyin", "v1.0.0"},
-		RecipeURL{"marguerite.su", "lotem", "terra-pinyin", "master"}}
+	result := Recipes{&Recipe{"github.com", "marguerite", "terra-pinyin", "v1.0.0", "", "", ""},
+		&Recipe{"marguerite.su", "lotem", "terra-pinyin", "master", "", "", ""}}
 	recipes := []string{"marguerite/terra-pinyin@v1.0.0", "marguerite.su/lotem/terra-pinyin"}
-	if reflect.DeepEqual(parseRecipeUrl(recipes), result) {
+	if reflect.DeepEqual(parseRecipeStrs(recipes), result) {
 		t.Log("parseRecipeUrl test passed.")
 	} else {
 		t.Error("parseRecipeUrl test failed.")
