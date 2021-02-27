@@ -19,8 +19,10 @@ func (pkgs PackagesStr) install() {
 	for i := 0; i < len(pkgs); i++ {
 		for j := 0; j < len(pkgs[i].Packages); j++ {
 			pkg := pkgs[i].Packages[j]
-			pkg.cloneOrUpdate()
-			pkg.install()
+			if pkg.Install {
+				pkg.cloneOrUpdate()
+				pkg.install()
+			}
 		}
 	}
 }

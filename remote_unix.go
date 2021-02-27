@@ -3,5 +3,5 @@
 package main
 
 func getSep() []byte {
-	return []byte("package_list=(")
+	return str2bytes("package_list=(")
 }

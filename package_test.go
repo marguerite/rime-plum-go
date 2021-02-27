@@ -6,20 +6,20 @@ import (
 )
 
 func TestNewPackage(t *testing.T) {
-	test_args := []string{"jyutping",
+	testArgs := []string{"jyutping",
 		"lotem/rime-zhung",
 		"lotem/rime-zhung@master",
 	}
 
-	test_results := []Package{{"rime-jyutping", "rime", "https://github.com", "master", "https://github.com/rime/rime-jyutping", true, "", nil, ""},
+	testResults := []Package{{"rime-jyutping", "rime", "https://github.com", "master", "https://github.com/rime/rime-jyutping", true, "", nil, ""},
 		{"rime-zhung", "lotem", "https://github.com", "master", "https://github.com/lotem/rime-zhung", true, "", nil, ""},
 		{"rime-zhung", "lotem", "https://github.com", "master", "https://github.com/lotem/rime-zhung", true, "", nil, ""},
 	}
 
-	for i, v := range test_args {
+	for i, v := range testArgs {
 		pkg := NewPackage(v)
-		if !pkg.equal(test_results[i]) {
-			t.Errorf("NewPackage failed, expected %v, got %v", test_results[i], pkg)
+		if !pkg.equal(testResults[i]) {
+			t.Errorf("NewPackage failed, expected %v, got %v", testResults[i], pkg)
 		}
 	}
 }

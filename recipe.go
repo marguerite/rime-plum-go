@@ -45,10 +45,11 @@ func NewRecipe(b []byte, options map[string]string) (Recipe, error) {
 	return r, nil
 }
 
+// replaceVar replcae ${} quoted variables to their actual values
 func replaceVar(b []byte, args map[string]string) []byte {
 	var b1 []byte
 	for {
-		i := bytes.Index(b, []byte("${"))
+		i := bytes.Index(b, str2bytes("${"))
 		if i < 0 {
 			b1 = appendbyte(b1, b)
 			break
@@ -65,6 +66,7 @@ func replaceVar(b []byte, args map[string]string) []byte {
 	return b1
 }
 
+// parseArg turn args to map, replace with value in options
 func parseArg(args []string, options map[string]string) map[string]string {
 	args1 := make(map[string]string, len(args))
 	for _, v := range args {

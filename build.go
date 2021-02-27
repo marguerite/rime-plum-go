@@ -70,7 +70,7 @@ func overrideDefaultYaml(schemas []string) {
 		}
 	}
 
-	err := ioutil.WriteFile(d, []byte(list), 0644)
+	err := ioutil.WriteFile(d, str2bytes(list), 0644)
 	if err != nil {
 		fmt.Printf("failed to write %s\n", d)
 		os.Exit(1)
@@ -92,7 +92,7 @@ func minEssay(s string) {
 			}
 		}
 	}
-	err := ioutil.WriteFile(s, []byte(essay), 0644)
+	err := ioutil.WriteFile(s, str2bytes(essay), 0644)
 	if err != nil {
 		fmt.Printf("failed to write %s\n", s)
 		os.Exit(1)
@@ -115,7 +115,7 @@ func minLuna(s string) {
 			luna += line + "\n"
 		}
 	}
-	err := ioutil.WriteFile(s, []byte(luna), 0644)
+	err := ioutil.WriteFile(s, str2bytes(luna), 0644)
 	if err != nil {
 		fmt.Printf("failed to write file %s\n", s)
 		os.Exit(1)
@@ -143,7 +143,7 @@ func minSchema(s string) {
 		}
 		schema += line + "\n"
 	}
-	err := ioutil.WriteFile(s, []byte(schema), 0644)
+	err := ioutil.WriteFile(s, str2bytes(schema), 0644)
 	if err != nil {
 		fmt.Printf("failed to write file %s\n", s)
 		os.Exit(1)

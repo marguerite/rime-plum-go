@@ -48,7 +48,7 @@ func validateRemotePackageConf(str string) (string, error) {
 //parsePackageConf parse rime package.conf
 func parsePackageConf(bits []byte) ([]string, error) {
 	strs := make([]string, bytes.Count(bits, []byte{'\n'}))
-	//[]byte("#!/bin/bash\n\npackage_list=(\n\tlotem/rime-aoyu\n  lotem/rime-bopomofo-script\n)")
+	//str2bytes("#!/bin/bash\n\npackage_list=(\n\tlotem/rime-aoyu\n  lotem/rime-bopomofo-script\n)")
 	sep := getSep()
 	idx := bytes.Index(bits, sep)
 
