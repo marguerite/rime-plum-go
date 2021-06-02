@@ -23,19 +23,26 @@ func buildPackages() {
 	if ok, _ := slice.Contains(files, "luna_pinyin.dict.yaml"); ok {
 		minLuna(filepath.Join(RIME_DIR, "luna_pinyin.dict.yaml"))
 	}
-	schemas, _ := dir.Glob("*.schema.yaml", RIME_DIR)
+	d, _ := filepath.Abs(RIME_DIR)
+	deployer, notfound := getRimeDeployer()
+
+	schemas, _ := dir.Glob("*.schema.yaml", d)
 	for _, v := range schemas {
 		minSchema(v)
 	}
 	overrideDefaultYaml(schemas)
-	_, _, err := exec.Exec3("/usr/bin/rime_deployer", "--build", RIME_DIR)
-	if err != nil {
-		fmt.Printf("failed to run command: /usr/bin/rime_deployer --build %s\n", RIME_DIR)
+	if _, err := os.Stat(deployer); os.IsNotExist(err) {
+		fmt.Println(notfound)
 		os.Exit(1)
 	}
-	err = os.RemoveAll(filepath.Join(RIME_DIR, "user.yaml"))
+	_, _, err := exec.Exec3(deployer, "--build", d)
 	if err != nil {
-		fmt.Printf("failed to remove %s\n", filepath.Join(RIME_DIR, "user.yaml"))
+		fmt.Printf("failed to run command: %s --build %s\n", deployer, d)
+		os.Exit(1)
+	}
+	err = os.RemoveAll(filepath.Join(d, "user.yaml"))
+	if err != nil {
+		fmt.Printf("failed to remove %s\n", filepath.Join(d, "user.yaml"))
 		os.Exit(1)
 	}
 }

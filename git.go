@@ -108,9 +108,12 @@ func (pkg *Package) cloneOrUpdate() {
 			ReferenceName: localBranch,
 		})
 		if err != nil {
-			if err.Error() == "already up-to-date" {
+			switch err.Error() {
+			case "already up-to-date":
 				fmt.Printf("%s already up-to-date\n", pkg.URL)
-			} else {
+			case "empty git-upload-pack given":
+				fmt.Printf("empty git-upload-pack given, %s already up-to-date\n", pkg.URL)
+			default:
 				fmt.Printf("failed to pull repository %s: %s\n", pkg.URL, err.Error())
 				os.Exit(1)
 			}

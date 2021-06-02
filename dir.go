@@ -7,8 +7,8 @@ import (
 
 // GetRimeDir get Rime Data Dir
 func GetRimeDir() string {
-	home := os.Getenv("HOME")
-	if len(home) == 0 {
+	home, err := os.UserHomeDir()
+	if err != nil || len(home) == 0 {
 		panic("no HOME directory found")
 	}
 

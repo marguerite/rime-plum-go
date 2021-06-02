@@ -67,7 +67,7 @@ func checkRecipe(r Recipe, pkg Package) {
 }
 
 func installFilesFromDir(d string) {
-	pattern := [][]string{[]string{"*.yaml", "{custom,recipe}.yaml"}, []string{"*.txt", "opencc/"}, []string{"*.gram"}, []string{"opencc/*.*", ".{json,ocd,txt}"}}
+	pattern := [][]string{[]string{"*.yaml", "*{custom,recipe}.yaml"}, []string{"*.txt", "opencc/"}, []string{"*.gram"}, []string{"opencc/*.*", "*.{json,ocd,txt}"}}
 
 	var files []string
 	for _, v := range pattern {

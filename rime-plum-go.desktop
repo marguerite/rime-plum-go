@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=rime-plum-go
+Icon=rime-256
+Type=Application
+Exec=/usr/bin/rime-plum-go
+Categories=System;
