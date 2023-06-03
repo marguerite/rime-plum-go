@@ -14,7 +14,7 @@ func GetRimeDir() string {
 
 	switch RIME_FRONTEND {
 	case "fcitx5":
-		return filepath.Join(home, ".config/fcitx5/rime")
+		return filepath.Join(home, ".local/share/fcitx5/rime")
 	case "fcitx":
 		return filepath.Join(home, ".config/fcitx/rime")
 	case "ibus":
