@@ -10,31 +10,31 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-18.04, windows-2016]
+        os: [ubuntu-20.04, windows-2019]
     steps:
       - uses: actions/checkout@v2
 
       - name: Install Go
-        if: matrix.os == 'ubuntu-18.04'
+        if: matrix.os == 'ubuntu-20.04'
         run: |
-          sudo apt-get update && sudo apt-get install golang-1.13
+          sudo apt-get update && sudo apt-get install golang-1.18
 
       - name: Download Go Modules
         run: |
           go mod download
 
       - name: Build Package
-        if: matrix.os == 'windows-2016'
+        if: matrix.os == 'windows-2019'
         run: |
           go build
 
       - name: Make AppImage
-        if: matrix.os == 'ubuntu-18.04'
+        if: matrix.os == 'ubuntu-20.04'
         run: |
           chmod +x build.sh && bash build.sh
 
       - name: Upload Assets
-        if: matrix.os == 'ubuntu-18.04'
+        if: matrix.os == 'ubuntu-20.04'
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
@@ -44,7 +44,7 @@ jobs:
           overwrite: true
 
       - name: Upload Executable
-        if: matrix.os == 'windows-2016'
+        if: matrix.os == 'windows-2019'
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}

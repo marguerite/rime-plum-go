@@ -28,34 +28,24 @@ func (r Recipe) patch(pkg Package) {
 
 			if begin < 0 {
 				// append "__patch:\n" and our patch
-				for _, v := range []byte(str) {
-					b = append(b, v)
-				}
+				b = append(b, []byte(str)...)
 				ioutil.WriteFile(filename, b, 0644)
 				continue
 			}
 			if end < 0 {
 				// append our patch to the end of "__patch:\n" section
 				tmp := b[:begin]
-				for _, v := range []byte(content) {
-					tmp = append(tmp, v)
-				}
+				tmp = append(tmp, []byte(content)...)
 				if begin < len(b)-1 {
-					for _, v := range b[begin+1:] {
-						tmp = append(tmp, v)
-					}
+					tmp = append(tmp, b[begin+1:]...)
 				}
 				ioutil.WriteFile(filename, tmp, 0644)
 				continue
 			}
 			// replace our old patch
 			tmp := b[:begin]
-			for _, v := range []byte(content) {
-				tmp = append(tmp, v)
-			}
-			for _, v := range b[end:] {
-				tmp = append(tmp, v)
-			}
+			tmp = append(tmp, []byte(content)...)
+			tmp = append(tmp, b[end:]...)
 			ioutil.WriteFile(filename, tmp, 0644)
 		}
 	}

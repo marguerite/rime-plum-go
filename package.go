@@ -13,6 +13,10 @@ package main
 import (
 	"fmt"
 	"strings"
+
+	git "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
+	"github.com/go-git/go-git/v5/storage/memory"
 )
 
 func all() []string {
@@ -132,21 +136,46 @@ func (pkg Package) equal(pkg1 Package) bool {
 }
 
 // fillmissing fill up default host, user and branch
-func (pkg *Package) fillmissing() {
+func (pkg *Package) fillMissing() {
 	if len(pkg.Host) == 0 {
 		pkg.Host = "https://github.com"
 	}
 	if len(pkg.User) == 0 {
 		pkg.User = "rime"
 	}
-	if len(pkg.Branch) == 0 {
-		pkg.Branch = "master"
-	}
 }
 
 func (pkg *Package) genURL() {
 	// can't use filepath because it will eat double "/" to "/", thus go-git will treat that URL as ssh
 	pkg.URL = pkg.Host + "/" + pkg.User + "/" + pkg.Repo
+}
+
+func (pkg *Package) setDefaultBranch() {
+	rem := git.NewRemote(memory.NewStorage(), &config.RemoteConfig{
+		Name: "origin",
+		URLs: []string{pkg.URL},
+	})
+
+	refs, _ := rem.List(&git.ListOptions{
+		PeelingOption: git.AppendPeeled,
+	})
+
+	var branches []string
+
+	for _, ref := range refs {
+		if ref.Name().IsBranch() {
+			branches = append(branches, strings.TrimPrefix(ref.Name().String(), "refs/heads/"))
+		}
+	}
+
+	for _, branch := range branches {
+		if branch == "master" {
+			pkg.Branch = "master"
+			return
+		}
+	}
+
+	pkg.Branch = "main"
 }
 
 // NewPackage initialize a rime package
@@ -170,8 +199,9 @@ func NewPackage(str string) Package {
 		// jyutping
 		f(str, &pkg)
 		pkg.Repo = "rime-" + pkg.Repo
-		pkg.fillmissing()
+		pkg.fillMissing()
 		pkg.genURL()
+		pkg.setDefaultBranch()
 		return pkg
 	}
 
@@ -204,8 +234,9 @@ func NewPackage(str string) Package {
 			pkg.Branch, pkg.Rx, pkg.RxOptions = parseRx(arr[6])
 		}
 	}
-	pkg.fillmissing()
+	pkg.fillMissing()
 	pkg.genURL()
+	pkg.setDefaultBranch()
 	return pkg
 }
 

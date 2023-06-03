@@ -67,7 +67,7 @@ func checkRecipe(r Recipe, pkg Package) {
 }
 
 func installFilesFromDir(d string) {
-	pattern := [][]string{[]string{"*.yaml", "*{custom,recipe}.yaml"}, []string{"*.txt", "opencc/"}, []string{"*.gram"}, []string{"opencc/*.*", "*.{json,ocd,txt}"}}
+	pattern := [][]string{{"*.yaml", "*{custom,recipe}.yaml"}, {"*.txt", "opencc/"}, {"*.gram"}, {"opencc/*.*", "*.{json,ocd,txt}"}}
 
 	var files []string
 	for _, v := range pattern {
@@ -82,9 +82,9 @@ func installFilesFromDir(d string) {
 			fmt.Printf("can not find qualified files in %s\n", d)
 			os.Exit(1)
 		}
-		for _, m := range matches {
-			files = append(files, m)
-		}
+
+		files = append(files, matches...)
+
 	}
 
 	for _, v := range files {
