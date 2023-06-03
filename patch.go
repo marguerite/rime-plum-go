@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -17,9 +16,9 @@ func (r Recipe) patch(pkg Package) {
 		filename := filepath.Join(RIME_DIR, k)
 		str := "__patch:\n" + content
 		if _, err := os.Stat(filename); os.IsNotExist(err) {
-			ioutil.WriteFile(filename, []byte(str), 0644)
+			os.WriteFile(filename, []byte(str), 0644)
 		} else {
-			b, err := ioutil.ReadFile(filename)
+			b, err := os.ReadFile(filename)
 			if err != nil {
 				panic(err)
 			}
@@ -29,7 +28,7 @@ func (r Recipe) patch(pkg Package) {
 			if begin < 0 {
 				// append "__patch:\n" and our patch
 				b = append(b, []byte(str)...)
-				ioutil.WriteFile(filename, b, 0644)
+				os.WriteFile(filename, b, 0644)
 				continue
 			}
 			if end < 0 {
@@ -39,14 +38,14 @@ func (r Recipe) patch(pkg Package) {
 				if begin < len(b)-1 {
 					tmp = append(tmp, b[begin+1:]...)
 				}
-				ioutil.WriteFile(filename, tmp, 0644)
+				os.WriteFile(filename, tmp, 0644)
 				continue
 			}
 			// replace our old patch
 			tmp := b[:begin]
 			tmp = append(tmp, []byte(content)...)
 			tmp = append(tmp, b[end:]...)
-			ioutil.WriteFile(filename, tmp, 0644)
+			os.WriteFile(filename, tmp, 0644)
 		}
 	}
 }

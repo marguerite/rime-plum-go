@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
 )
 
-//validateRemotePackageConf validate remote rime package.conf
+// validateRemotePackageConf validate remote rime package.conf
 func validateRemotePackageConf(str string) (string, error) {
 	// fillup host
 	if !strings.HasPrefix(str, "http") {
@@ -45,7 +45,7 @@ func validateRemotePackageConf(str string) (string, error) {
 	return str, nil
 }
 
-//parsePackageConf parse rime package.conf
+// parsePackageConf parse rime package.conf
 func parsePackageConf(bits []byte) ([]string, error) {
 	strs := make([]string, bytes.Count(bits, []byte{'\n'}))
 	//[]byte("#!/bin/bash\n\npackage_list=(\n\tlotem/rime-aoyu\n  lotem/rime-bopomofo-script\n)")
@@ -79,7 +79,7 @@ func parsePackageConf(bits []byte) ([]string, error) {
 	return strs[len(strs)-m:], nil
 }
 
-//ParseRemotePackageConf parse remote rime package.conf
+// ParseRemotePackageConf parse remote rime package.conf
 func ParseRemotePackageConf(str string) ([]string, error) {
 	var strs []string
 	url, err := validateRemotePackageConf(str)
@@ -97,7 +97,7 @@ func ParseRemotePackageConf(str string) ([]string, error) {
 		return strs, fmt.Errorf("%s not fetched, status %d", url, resp.StatusCode)
 	}
 
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return strs, err
 	}

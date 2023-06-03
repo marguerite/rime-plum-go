@@ -30,7 +30,7 @@ func appendbyte(b []byte, b1 []byte) []byte {
 }
 
 func splitFiles(str string) []string {
-	if strings.Index(str, " ") < 0 {
+	if !strings.Contains(str, " ") {
 		return []string{str}
 	}
 	i := strings.Count(str, " ")

@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -55,7 +54,7 @@ func overrideDefaultYaml(schemas []string) {
 	}
 
 	d := filepath.Join(filepath.Dir(schemas[0]), "default.yaml")
-	f, _ := ioutil.ReadFile(d)
+	f, _ := os.ReadFile(d)
 	re := regexp.MustCompile(`^config_version:\s+\'(.*)\'$`)
 	scanner := bufio.NewScanner(strings.NewReader(string(f)))
 	list := ""
@@ -77,7 +76,7 @@ func overrideDefaultYaml(schemas []string) {
 		}
 	}
 
-	err := ioutil.WriteFile(d, []byte(list), 0644)
+	err := os.WriteFile(d, []byte(list), 0644)
 	if err != nil {
 		fmt.Printf("failed to write %s\n", d)
 		os.Exit(1)
@@ -85,7 +84,7 @@ func overrideDefaultYaml(schemas []string) {
 }
 
 func minEssay(s string) {
-	f, _ := ioutil.ReadFile(s)
+	f, _ := os.ReadFile(s)
 	essay := ""
 	scanner := bufio.NewScanner(strings.NewReader(string(f)))
 	re := regexp.MustCompile(`^.*\s+(.*)$`)
@@ -99,7 +98,7 @@ func minEssay(s string) {
 			}
 		}
 	}
-	err := ioutil.WriteFile(s, []byte(essay), 0644)
+	err := os.WriteFile(s, []byte(essay), 0644)
 	if err != nil {
 		fmt.Printf("failed to write %s\n", s)
 		os.Exit(1)
@@ -107,7 +106,7 @@ func minEssay(s string) {
 }
 
 func minLuna(s string) {
-	f, _ := ioutil.ReadFile(s)
+	f, _ := os.ReadFile(s)
 	scanner := bufio.NewScanner(strings.NewReader(string(f)))
 	luna := ""
 	re := regexp.MustCompile(`^version:\s+\"(.*)\"$`)
@@ -122,7 +121,7 @@ func minLuna(s string) {
 			luna += line + "\n"
 		}
 	}
-	err := ioutil.WriteFile(s, []byte(luna), 0644)
+	err := os.WriteFile(s, []byte(luna), 0644)
 	if err != nil {
 		fmt.Printf("failed to write file %s\n", s)
 		os.Exit(1)
@@ -130,7 +129,7 @@ func minLuna(s string) {
 }
 
 func minSchema(s string) {
-	f, _ := ioutil.ReadFile(s)
+	f, _ := os.ReadFile(s)
 	scanner := bufio.NewScanner(strings.NewReader(string(f)))
 	schema := ""
 	re := regexp.MustCompile(`(\s+version:\s+)\"(.*)\"$`)
@@ -150,7 +149,7 @@ func minSchema(s string) {
 		}
 		schema += line + "\n"
 	}
-	err := ioutil.WriteFile(s, []byte(schema), 0644)
+	err := os.WriteFile(s, []byte(schema), 0644)
 	if err != nil {
 		fmt.Printf("failed to write file %s\n", s)
 		os.Exit(1)

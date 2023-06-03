@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -17,7 +16,7 @@ func (pkg Package) install() {
 			fmt.Printf("no recipe %s found, typo?\n", pkg.Rx)
 			os.Exit(1)
 		}
-		b, err := ioutil.ReadFile(r)
+		b, err := os.ReadFile(r)
 		if err != nil {
 			fmt.Printf("failed to open file %s: %s\n", r, err)
 			os.Exit(1)
@@ -36,7 +35,7 @@ func (pkg Package) install() {
 
 	if _, err := os.Stat(filepath.Join(pkg.WorkingDirectory, "recipe.yaml")); !os.IsNotExist(err) {
 		r := filepath.Join(pkg.WorkingDirectory, "recipe.yaml")
-		b, err := ioutil.ReadFile(r)
+		b, err := os.ReadFile(r)
 		if err != nil {
 			fmt.Printf("failed to read file %s: %s\n", r, err)
 			os.Exit(1)
