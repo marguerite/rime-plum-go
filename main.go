@@ -13,7 +13,7 @@ var (
 	RIME_DIR      = ""
 	RIME_FRONTEND = ""
 	preset        = []string{"bopomofo", "cangjie", "custom", "essay", "luna-pinyin", "prelude", "stroke", "terra-pinyin"}
-	extra         = []string{"array", "cantonese", "combo-pinyin", "double-pinyin", "emoji", "essay-simp", "ipa", "middle-chinese", "pinyin-simp", "quick", "scj", "soutzoe", "stenotype", "wubi", "wugniu"}
+	extra         = []string{"array", "cantonese", "combo-pinyin", "double-pinyin", "emoji", "essay-simp", "ipa", "middle-chinese", "pinyin-simp", "quick", "scj", "soutzoe", "stenotype", "wubi", "wugniu", "emoji-cantonese"}
 	CLIENT        = &http.Client{
 		Transport: &http.Transport{
 			Proxy:           http.ProxyFromEnvironment,
