@@ -43,7 +43,6 @@ func downloadFiles(str, dir string) {
 			commit(dir, filename)
 		} else {
 			// the update case
-			fmt.Printf("fuck1%s\n", stat.ModTime().String())
 			if lastModified.After(stat.ModTime()) {
 				fetch(url, filename)
 				commit(dir, filename)

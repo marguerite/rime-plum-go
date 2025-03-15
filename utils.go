@@ -18,15 +18,23 @@ func split(str, sep string, size int) []string {
 	return arr
 }
 
-func appendbyte(b []byte, b1 []byte) []byte {
-	b2 := make([]byte, len(b)+len(b1))
-	copy(b2, b)
-	var j int
-	for i := len(b); i < len(b)+len(b1); i++ {
-		b2[i] = b1[j]
-		j++
+func appendByte(byteArr ...[]byte) []byte {
+	var idx int
+	for _, b := range byteArr {
+		idx += len(b)
 	}
-	return b2
+
+	res := make([]byte, idx)
+
+	tmpIdx := 0
+	for _, b := range byteArr {
+		for _, bt := range b {
+			res[tmpIdx] = bt
+			tmpIdx += 1
+		}
+        }
+
+	return res
 }
 
 func splitFiles(str string) []string {

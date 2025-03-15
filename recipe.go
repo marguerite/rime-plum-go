@@ -50,13 +50,12 @@ func replaceVar(b []byte, args map[string]string) []byte {
 	for {
 		i := bytes.Index(b, []byte("${"))
 		if i < 0 {
-			b1 = appendbyte(b1, b)
+			b1 = appendByte(b1, b)
 			break
 		}
 		j := bytes.IndexByte(b[i:], '}')
 		v := b[i : i+j+1]
-		b1 = appendbyte(b1, b[:i])
-		b1 = appendbyte(b1, expandVar(v, args))
+		b1 = appendByte(b1, b[:i], expandVar(v, args))
 		if i+j+1 == len(b) {
 			break
 		}

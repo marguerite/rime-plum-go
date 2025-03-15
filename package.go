@@ -19,11 +19,13 @@ import (
 	"github.com/go-git/go-git/v5/storage/memory"
 )
 
-func all() []string {
-	arr := make([]string, len(preset)+len(extra))
-	copy(arr, preset)
-	for i := 0; i < len(extra); i++ {
-		arr[len(preset)+i] = extra[i]
+func getAllSchemas() []string {
+	arr := make([]string, LEN_PRESET+LEN_EXTRA)
+	for i := 0; i < LEN_PRESET; i++ {
+		arr[i] = PRESET_SCHEMAS[i]
+	}
+	for i := 0; i < LEN_EXTRA; i++ {
+		arr[LEN_PRESET+i] = EXTRA_SCHEMAS[i]
 	}
 	return arr
 }
@@ -63,22 +65,28 @@ func NewPackages(str string) (Packages, error) {
 
 	if str[0] == ':' {
 		pkgs.Preset = true
-		strs := make([]string, len(preset)+len(extra))
+		str_arr := make([]string, LEN_ALL)
 		switch str[1:] {
 		case "preset":
-			copy(strs, preset)
-			strs = strs[:len(preset)]
+			for i := 0; i < LEN_PRESET; i++ {
+				str_arr[i] = PRESET_SCHEMAS[i]
+			}
+			str_arr = str_arr[:LEN_PRESET]
 		case "extra":
-			copy(strs, extra)
-			strs = strs[:len(extra)]
+			for i := 0; i < LEN_EXTRA; i++ {
+				str_arr[i] = EXTRA_SCHEMAS[i]
+			}
+			str_arr = str_arr[:LEN_EXTRA]
 		case "all":
-			copy(strs, all())
+			for i, v := range getAllSchemas() {
+				str_arr[i] = v
+			}
 		default:
 			return pkgs, fmt.Errorf("not a valid preset set %s", str)
 		}
-		packages := make([]Package, 0, len(strs))
-		for _, v := range strs {
-			packages = append(packages, NewPackage(v))
+		packages := make([]Package, 0, len(str_arr))
+		for i, v := range str_arr {
+			packages[i] = NewPackage(v)
 		}
 		pkgs.Packages = packages
 		return pkgs, nil
@@ -87,13 +95,13 @@ func NewPackages(str string) (Packages, error) {
 	if strings.HasSuffix(str, ".conf") {
 		// two kinds of file format, one is the raw URL, the other is the @master style
 		pkgs.File = str
-		strs, err := ParseRemotePackageConf(str)
+		str_arr, err := ParseRemotePackageConf(str)
 		if err != nil {
 			return pkgs, err
 		}
-		packages := make([]Package, 0, len(strs))
-		for _, v := range strs {
-			packages = append(packages, NewPackage(v))
+		packages := make([]Package, 0, len(str_arr))
+		for i, v := range str_arr {
+			packages[i] = NewPackage(v)
 		}
 		pkgs.Packages = packages
 		return pkgs, nil

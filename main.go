@@ -12,8 +12,11 @@ import (
 var (
 	RIME_DIR      = ""
 	RIME_FRONTEND = ""
-	preset        = []string{"bopomofo", "cangjie", "custom", "essay", "luna-pinyin", "prelude", "stroke", "terra-pinyin"}
-	extra         = []string{"array", "cantonese", "combo-pinyin", "double-pinyin", "emoji", "essay-simp", "ipa", "middle-chinese", "pinyin-simp", "quick", "scj", "soutzoe", "stenotype", "wubi", "wugniu", "emoji-cantonese"}
+	PRESET_SCHEMAS        = []string{"bopomofo", "cangjie", "custom", "essay", "luna-pinyin", "prelude", "stroke", "terra-pinyin"}
+	EXTRA_SCHEMAS         = []string{"array", "cantonese", "combo-pinyin", "double-pinyin", "emoji", "essay-simp", "ipa", "middle-chinese", "pinyin-simp", "quick", "scj", "soutzoe", "stenotype", "wubi", "wugniu", "emoji-cantonese"}
+	LEN_PRESET = len(PRESET_SCHEMAS)
+	LEN_EXTRA = len(EXTRA_SCHEMAS)
+	LEN_ALL = LEN_PRESET + LEN_EXTRA
 	CLIENT        = &http.Client{
 		Transport: &http.Transport{
 			Proxy:           http.ProxyFromEnvironment,
@@ -49,8 +52,8 @@ func main() {
 		// update ourselves
 	}
 
-	// make append quickly, len(extra) is enough for most of the cases
-	pkgs := make(PackagesStr, 0, len(args)+len(extra))
+	// make append quickly, len(EXTRA_SCHEMAS) is enough for most of the cases
+	pkgs := make(PackagesStr, 0, len(args)+len(EXTRA_SCHEMAS))
 	var i int
 
 	for _, v := range args {
