@@ -30,10 +30,10 @@ func getAllSchemas() []string {
 	return arr
 }
 
-// PackagesStr rime packages set specified via command line
-type PackagesStr []Packages
+// PackageSets rime package sets specified via command line. eg: ":preset jyutping", are two package sets, :preset can be expanded to a package set with many packages, while jyutping is a package set with one package
+type PackageSets []PackageSet
 
-func (r *PackagesStr) toggle(idx int, ck bool) {
+func (r *PackageSets) toggle(idx int, ck bool) {
 	var i int
 	for m := range *r {
 		for n := range (*r)[m].Packages {
@@ -47,16 +47,16 @@ func (r *PackagesStr) toggle(idx int, ck bool) {
 }
 
 // Packages rime packages
-type Packages struct {
+type PackageSet struct {
 	Packages []Package
 	Preset   bool
 	Raw      string
 	File     string
 }
 
-// NewPackages initialize new Packages
-func NewPackages(str string) (Packages, error) {
-	var pkgs Packages
+// NewPackageSet initialize new PackageSet
+func NewPackageSet(str string) (PackageSet, error) {
+	var pkgs PackageSet
 	pkgs.Raw = str
 
 	if len(str) == 0 {
@@ -144,21 +144,17 @@ func (pkg Package) equal(pkg1 Package) bool {
 }
 
 // fillmissing fill up default host, user and branch
-func (pkg *Package) fillMissing() {
+func (pkg *Package) normalize() {
 	if len(pkg.Host) == 0 {
 		pkg.Host = "https://github.com"
 	}
 	if len(pkg.User) == 0 {
 		pkg.User = "rime"
 	}
-}
 
-func (pkg *Package) genURL() {
 	// can't use filepath because it will eat double "/" to "/", thus go-git will treat that URL as ssh
 	pkg.URL = pkg.Host + "/" + pkg.User + "/" + pkg.Repo
-}
-
-func (pkg *Package) setDefaultBranch() {
+	
 	rem := git.NewRemote(memory.NewStorage(), &config.RemoteConfig{
 		Name: "origin",
 		URLs: []string{pkg.URL},
@@ -207,9 +203,7 @@ func NewPackage(str string) Package {
 		// jyutping
 		f(str, &pkg)
 		pkg.Repo = "rime-" + pkg.Repo
-		pkg.fillMissing()
-		pkg.genURL()
-		pkg.setDefaultBranch()
+		pkg.normalize()
 		return pkg
 	}
 
@@ -242,9 +236,7 @@ func NewPackage(str string) Package {
 			pkg.Branch, pkg.Rx, pkg.RxOptions = parseRx(arr[6])
 		}
 	}
-	pkg.fillMissing()
-	pkg.genURL()
-	pkg.setDefaultBranch()
+	pkg.normalize()
 	return pkg
 }
 

@@ -43,7 +43,7 @@ func main() {
 
 	var build, ui bool
 
-	for i, v := range args {
+	for i, v := range args[1:] {
 		switch v {
 		case "--build":
 			build = true
@@ -58,20 +58,17 @@ func main() {
 		}
 	}
 
-	// make append quickly, len(EXTRA_SCHEMAS) is enough for most of the cases
-	pkgs := make(PackagesStr, 0, len(args)+LEN_EXTRA)
+	pkgs := make(PackageSets, 0, len(args[1:]))
 	var i int
 
-	for _, v := range args {
-		pkg, err := NewPackages(v)
+	for _, v := range args[1:] {
+		pkg, err := NewPackageSet(v)
 		if err != nil {
 			panic(err)
 		}
 		pkgs = append(pkgs, pkg)
 		i++
 	}
-
-	pkgs = pkgs[len(pkgs)-i:]
 
 	if len(RIME_FRONTEND) == 0 {
 		RIME_FRONTEND = GetRimeFrontend()

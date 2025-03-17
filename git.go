@@ -15,7 +15,7 @@ import (
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
-func (pkgs PackagesStr) install() {
+func (pkgs PackageSets) install() {
 	for i := 0; i < len(pkgs); i++ {
 		for j := 0; j < len(pkgs[i].Packages); j++ {
 			pkg := pkgs[i].Packages[j]

@@ -8,7 +8,7 @@ import (
 )
 
 type model struct {
-	choices  PackagesStr
+	choices  PackageSets
 	cursor   int
 	selected map[int]struct{}
 }
