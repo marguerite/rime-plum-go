@@ -10,14 +10,14 @@ import (
 )
 
 var (
-	RIME_DIR      = ""
-	RIME_FRONTEND = ""
-	PRESET_SCHEMAS        = []string{"bopomofo", "cangjie", "custom", "essay", "luna-pinyin", "prelude", "stroke", "terra-pinyin"}
-	EXTRA_SCHEMAS         = []string{"array", "cantonese", "combo-pinyin", "double-pinyin", "emoji", "essay-simp", "ipa", "middle-chinese", "pinyin-simp", "quick", "scj", "soutzoe", "stenotype", "wubi", "wugniu", "emoji-cantonese"}
-	LEN_PRESET = len(PRESET_SCHEMAS)
-	LEN_EXTRA = len(EXTRA_SCHEMAS)
-	LEN_ALL = LEN_PRESET + LEN_EXTRA
-	CLIENT        = &http.Client{
+	RIME_DIR       = os.Getenv("RIME_DIR")
+	RIME_FRONTEND  = os.Getenv("RIME_FRONTEND")
+	PRESET_SCHEMAS = []string{"bopomofo", "cangjie", "custom", "essay", "luna-pinyin", "prelude", "stroke", "terra-pinyin"}
+	EXTRA_SCHEMAS  = []string{"array", "cantonese", "combo-pinyin", "double-pinyin", "emoji", "essay-simp", "ipa", "middle-chinese", "pinyin-simp", "quick", "scj", "soutzoe", "stenotype", "wubi", "wugniu", "emoji-cantonese"}
+	LEN_PRESET     = len(PRESET_SCHEMAS)
+	LEN_EXTRA      = len(EXTRA_SCHEMAS)
+	LEN_ALL        = LEN_PRESET + LEN_EXTRA
+	CLIENT         = &http.Client{
 		Transport: &http.Transport{
 			Proxy:           http.ProxyFromEnvironment,
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -26,34 +26,40 @@ var (
 )
 
 func main() {
-	args := os.Args[1:]
+	args := os.Args
 
-	if len(args) < 1 {
+	if len(args) == 1 {
 		fmt.Println("please input rime configurations, as ':preset' or '(https://github.com)/(lotem)/rime-forge(@master|/raw/master)/(lotem-packages.conf)'. the quoted parts can be skipped if you're using github.com/rime prefix. 'plum' itself with root permission will update this binary.")
-		os.Exit(1)
+		os.Exit(0)
+	}
+
+	if len(args) == 2 && args[1] == "plum" {
+		// update ourselves
+		fmt.Println("Not Implemented Yet")
+		os.Exit(0)
 	}
 
 	// help section
 
 	var build, ui bool
 
-	for i := 0; i < len(args); i++ {
-		switch args[i] {
+	for i, v := range args {
+		switch v {
 		case "--build":
-			args = append(args[:i], args[i+1:]...)
 			build = true
 		case "--select":
-			args = append(args[:i], args[i+1:]...)
 			ui = true
+		}
+		if build || ui {
+			args = append(args[:i], args[i+1:]...)
+		}
+		if build && ui {
+			break
 		}
 	}
 
-	if len(args) == 1 && args[0] == "plum" {
-		// update ourselves
-	}
-
 	// make append quickly, len(EXTRA_SCHEMAS) is enough for most of the cases
-	pkgs := make(PackagesStr, 0, len(args)+len(EXTRA_SCHEMAS))
+	pkgs := make(PackagesStr, 0, len(args)+LEN_EXTRA)
 	var i int
 
 	for _, v := range args {
@@ -67,15 +73,11 @@ func main() {
 
 	pkgs = pkgs[len(pkgs)-i:]
 
-	if len(os.Getenv("rime_frontend")) > 0 {
-		RIME_FRONTEND = os.Getenv("rime_frontend")
-	} else {
+	if len(RIME_FRONTEND) == 0 {
 		RIME_FRONTEND = GetRimeFrontend()
 	}
 
-	if len(os.Getenv("rime_dir")) > 0 {
-		RIME_DIR = os.Getenv("rime_dir")
-	} else {
+	if len(RIME_DIR) == 0 {
 		RIME_DIR = GetRimeDir()
 	}
 

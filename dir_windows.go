@@ -3,7 +3,7 @@
 package main
 
 import (
-	"golang.org/x/sys/registry"
+	"golang.org/x/sys/windows/registry"
 	"os"
 	"path/filepath"
 	"fmt"

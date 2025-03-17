@@ -2,8 +2,6 @@ module github.com/marguerite/rime-plum-go
 
 go 1.21
 
-toolchain go1.24.1
-
 require (
 	github.com/cavaliercoder/grab v2.0.0+incompatible
 	github.com/charmbracelet/bubbletea v0.13.4

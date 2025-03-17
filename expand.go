@@ -4,13 +4,13 @@
 package main
 
 import (
-	"fmt"
 	"bytes"
+	"fmt"
 	"os"
 )
 
 func expandVar(b []byte, args map[string]string) []byte {
-	b = b[2:len(b)-1]
+	b = b[2 : len(b)-1]
 	var param []byte
 
 	for i, v := range b {
@@ -22,12 +22,12 @@ func expandVar(b []byte, args map[string]string) []byte {
 				if args == nil {
 					return word
 				}
-				if val, ok := args[string(param)]; !ok {
+				val, ok := args[string(param)]
+				if !ok {
 					return word
-				} else {
-					return []byte(val)
 				}
-			case '=','?','+':
+				return []byte(val)
+			case '=', '?', '+':
 				fmt.Printf("not implemented yet %s\n", b)
 				os.Exit(1)
 			default:
@@ -46,10 +46,9 @@ func expandVar(b []byte, args map[string]string) []byte {
 			j := bytes.Index([]byte(val), word)
 			if j < 0 {
 				return []byte(val)
-			} else {
-				return []byte(val[:j])
 			}
-		case '#','/','^',',','@':
+			return []byte(val[:j])
+		case '#', '/', '^', ',', '@':
 			fmt.Printf("not implemented %s\n", b)
 			os.Exit(1)
 		default:

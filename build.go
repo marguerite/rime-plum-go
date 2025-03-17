@@ -11,15 +11,15 @@ import (
 
 	"github.com/marguerite/go-stdlib/dir"
 	"github.com/marguerite/go-stdlib/exec"
-	"github.com/marguerite/go-stdlib/slice"
+	"slices"
 )
 
 func buildPackages() {
 	files, _ := dir.Ls(RIME_DIR, true, true)
-	if ok, _ := slice.Contains(files, "essay.txt"); ok {
+	if slices.Contains(files, "essay.txt") {
 		minEssay(filepath.Join(RIME_DIR, "essay.txt"))
 	}
-	if ok, _ := slice.Contains(files, "luna_pinyin.dict.yaml"); ok {
+	if slices.Contains(files, "luna_pinyin.dict.yaml") {
 		minLuna(filepath.Join(RIME_DIR, "luna_pinyin.dict.yaml"))
 	}
 	d, _ := filepath.Abs(RIME_DIR)
