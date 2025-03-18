@@ -65,30 +65,28 @@ func NewPackageSet(str string) (PackageSet, error) {
 
 	if str[0] == ':' {
 		pkgs.Preset = true
-		str_arr := make([]string, LEN_ALL)
 		switch str[1:] {
 		case "preset":
+			packages := make(PackageSet, LEN_PRESET)
 			for i := 0; i < LEN_PRESET; i++ {
-				str_arr[i] = PRESET_SCHEMAS[i]
+				packages[i] = NewPackage(PRESET_SCHEMAS[i])
 			}
-			str_arr = str_arr[:LEN_PRESET]
+			pkgs.Packages = packages
 		case "extra":
+			packages := make(PackageSet, LEN_EXTRA)
 			for i := 0; i < LEN_EXTRA; i++ {
-				str_arr[i] = EXTRA_SCHEMAS[i]
+				packages[i] = NewPackage(EXTRA_SCHEMAS[i])
 			}
-			str_arr = str_arr[:LEN_EXTRA]
+			pkgs.Packages = packages
 		case "all":
+			packages := make(PackageSet, LEN_ALL)
 			for i, v := range getAllSchemas() {
-				str_arr[i] = v
+				packages[i] = NewPackage(v)
 			}
+			pkgs.Packages = packages
 		default:
 			return pkgs, fmt.Errorf("not a valid preset set %s", str)
 		}
-		packages := make([]Package, 0, len(str_arr))
-		for i, v := range str_arr {
-			packages[i] = NewPackage(v)
-		}
-		pkgs.Packages = packages
 		return pkgs, nil
 	}
 
@@ -143,7 +141,7 @@ func (pkg Package) equal(pkg1 Package) bool {
 	return true
 }
 
-// fillmissing fill up default host, user and branch
+// normalize: fill up default host, user and branch
 func (pkg *Package) normalize() {
 	if len(pkg.Host) == 0 {
 		pkg.Host = "https://github.com"

@@ -59,7 +59,6 @@ func main() {
 	}
 
 	pkgs := make(PackageSets, 0, len(args[1:]))
-	var i int
 
 	for _, v := range args[1:] {
 		pkg, err := NewPackageSet(v)
@@ -67,7 +66,6 @@ func main() {
 			panic(err)
 		}
 		pkgs = append(pkgs, pkg)
-		i++
 	}
 
 	if len(RIME_FRONTEND) == 0 {
